@@ -34,6 +34,7 @@ interface SettlementRecord {
         passengerDays: number;
         debt: number;
         credit: number;
+        grossCredit: number;
         net: number;
     }[];
 }
@@ -123,23 +124,21 @@ export default function SettlementPage() {
             const stats = users.map(user => {
                 let driverDays = 0;
                 let passengerDays = 0;
+                let grossCredit = 0;
                 let credit = 0;
                 let debt = 0;
 
                 autoTrips.forEach(trip => {
-                    // Logic: 
-                    // If user is driver: 
-                    //    Driver Credit = (Number of passengers) * Daily Fee
-                    //    driverDays++
-                    // If user is in participants:
-                    //    Passenger Debt = Daily Fee
-                    //    passengerDays++
-
                     if (trip.driverUid === user.uid) {
                         driverDays++;
-                        // Count valid participants (excluding self if bug exists, though participants array usually doesn't include driver)
                         const passengerCount = trip.participants ? trip.participants.length : 0;
-                        credit += passengerCount * dailyFee;
+                        // Ne alacak: Kendisi hariç diğer yolcular
+                        const otherPassengerCount = trip.participants
+                            ? trip.participants.filter(pid => pid !== user.uid).length
+                            : 0;
+
+                        grossCredit += passengerCount * dailyFee;
+                        credit += otherPassengerCount * dailyFee;
                     } else if (trip.participants && trip.participants.includes(user.uid)) {
                         passengerDays++;
                         debt += dailyFee; // Pay the driver
@@ -152,6 +151,7 @@ export default function SettlementPage() {
                     driverDays,
                     passengerDays,
                     debt,
+                    grossCredit,
                     credit,
                     net: credit - debt
                 };
@@ -168,8 +168,10 @@ export default function SettlementPage() {
 
             // Simplified manual formula
             const passengerDebt = passengerDays * dailyFee;
-            // Driver credit: Assumes ALL other users were passengers every day - this is the simple manual approximation
-            const driverCredit = driverDays * (users.length - 1) * dailyFee;
+            // Brüt hakediş: Kendisi dahil herkes öder gibi hesaplanır
+            const grossCredit = driverDays * users.length * dailyFee;
+            // Gerçek alacak (Ne alacak): Sadece diğerlerinden gelen para
+            const netCredit = driverDays * (users.length - 1) * dailyFee;
 
             return {
                 userId: user.uid,
@@ -177,8 +179,9 @@ export default function SettlementPage() {
                 driverDays,
                 passengerDays,
                 debt: passengerDebt,
-                credit: driverCredit,
-                net: driverCredit - passengerDebt
+                grossCredit,
+                credit: netCredit,
+                net: netCredit - passengerDebt
             };
         });
     };
@@ -455,6 +458,7 @@ export default function SettlementPage() {
                                             <th className="px-4 py-3 text-left font-bold">Kişi</th>
                                             <th className="px-4 py-3 text-center font-bold">Rol (Sü/Yo)</th>
                                             <th className="px-4 py-3 text-right font-bold text-red-400">Borç</th>
+                                            <th className="px-4 py-3 text-right font-bold text-amber-500">Hakediş</th>
                                             <th className="px-4 py-3 text-right font-bold text-green-500">Alacak</th>
                                             <th className="px-4 py-3 text-right font-bold text-gray-700">NET</th>
                                         </tr>
@@ -471,6 +475,9 @@ export default function SettlementPage() {
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold text-red-500/80">
                                                     ₺{res.debt.toLocaleString()}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-amber-600/80">
+                                                    ₺{(res.grossCredit || 0).toLocaleString()}
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold text-green-600/80">
                                                     ₺{res.credit.toLocaleString()}
