@@ -34,7 +34,9 @@ import {
   Zap,
   MoreVertical,
   Fuel,
-  User
+  User,
+  Download,
+  Smartphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -134,6 +136,33 @@ export default function Dashboard() {
       case 'rainy': return <CloudRain size={16} className="text-blue-400" />;
       case 'snowy': return <Snowflake size={16} className="text-cyan-300" />;
       default: return <Sun size={16} className="text-amber-500" />;
+    }
+  };
+
+  // PWA Installation state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW Registration failed:', err));
+    }
+
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      toast.success("Uygulama yükleniyor...");
     }
   };
 
@@ -283,6 +312,20 @@ export default function Dashboard() {
                   <Button onClick={toggleDarkMode} variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white dark:hover:bg-slate-700 transition-all">
                     <Moon size={16} className={isDarkMode ? "text-yellow-400" : "text-gray-400"} fill="currentColor" />
                   </Button>
+
+                  {/* PWA Install Button */}
+                  {deferredPrompt && (
+                    <Button
+                      onClick={handleInstallApp}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all animate-bounce"
+                      title="Ana Ekrana Ekle"
+                    >
+                      <Smartphone size={16} strokeWidth={2.5} />
+                    </Button>
+                  )}
+
                   {user && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -491,7 +534,7 @@ export default function Dashboard() {
           </div>
 
           {/* Reports Section */}
-          <div className="space-y-4">
+          <div className="space-y-4 pt-8">
             <div className="flex items-center gap-2">
               <div className="bg-amber-100 p-1.5 rounded-lg text-amber-600"><Fuel size={16} strokeWidth={3} /></div>
               <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Rapor Analizleri</h2>

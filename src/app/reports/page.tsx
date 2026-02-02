@@ -11,6 +11,7 @@ import { getFuelPrices, getMonthFuelHistory, FuelPriceData } from "@/lib/fuel-se
 import { Trip, UserProfile } from "@/types";
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
+import Link from "next/link";
 import {
     Fuel,
     Gauge,
@@ -19,7 +20,8 @@ import {
     Car,
     ChevronLeft,
     ChevronRight,
-    Wallet
+    Wallet,
+    ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addMonths, subMonths } from "date-fns";
@@ -147,18 +149,25 @@ export default function ReportsPage() {
             <div className="space-y-8 pb-24">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Yakıt Raporu</h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                                <ChevronLeft size={20} className="text-gray-400" />
-                            </button>
-                            <span className="text-lg font-bold text-blue-600 min-w-[140px] text-center">
-                                {format(selectedMonth, "MMMM yyyy", { locale: tr })}
-                            </span>
-                            <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                                <ChevronRight size={20} className="text-gray-400" />
-                            </button>
+                    <div className="flex items-center gap-4">
+                        <Link href="/">
+                            <Button variant="ghost" size="icon" className="rounded-full">
+                                <ArrowLeft size={20} />
+                            </Button>
+                        </Link>
+                        <div>
+                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Yakıt Raporu</h1>
+                            <div className="flex items-center gap-2 mt-1">
+                                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                                    <ChevronLeft size={20} className="text-gray-400" />
+                                </button>
+                                <span className="text-lg font-bold text-blue-600 min-w-[140px] text-center">
+                                    {format(selectedMonth, "MMMM yyyy", { locale: tr })}
+                                </span>
+                                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                                    <ChevronRight size={20} className="text-gray-400" />
+                                </button>
+                            </div>
                         </div>
                     </div>
 

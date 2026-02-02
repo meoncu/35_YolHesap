@@ -12,6 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "YolTakip - Yolculuk ve Ödeme Takibi",
   description: "Arkadaş gruplarının işe gidiş-geliş araç paylaşımını ve ödeme hesaplarını takip ettiği uygulama.",
+  manifest: '/manifest.json',
   icons: {
     icon: '/icon.svg',
   },

@@ -19,11 +19,13 @@ import {
     CheckCircle2,
     AlertCircle,
     Info,
-    Calculator
+    Calculator,
+    ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
 import {
     Dialog,
     DialogContent,
@@ -226,9 +228,16 @@ export default function AdminPage() {
     return (
         <AppLayout>
             <div className="space-y-6 pb-24">
-                <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Yönetim Paneli</h1>
-                    <p className="text-gray-500 font-medium">Sistem yönetimi ve takip işlemleri.</p>
+                <div className="flex items-center gap-4">
+                    <Link href="/">
+                        <Button variant="ghost" size="icon" className="rounded-full">
+                            <ArrowLeft size={20} />
+                        </Button>
+                    </Link>
+                    <div className="flex flex-col gap-1">
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Yönetim Paneli</h1>
+                        <p className="text-gray-500 font-medium">Sistem yönetimi ve takip işlemleri.</p>
+                    </div>
                 </div>
 
                 {/* Tab Navigation */}
