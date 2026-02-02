@@ -33,7 +33,8 @@ import {
   Gauge,
   Zap,
   MoreVertical,
-  Fuel
+  Fuel,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -273,7 +274,7 @@ export default function Dashboard() {
             </div>
 
             {/* Middle Section: Clock and Profile Actions */}
-            <div className="hidden md:flex flex-col items-center gap-2 mb-1">
+            <div className="flex flex-col items-center gap-2 mb-1">
               <div className="flex items-center gap-3 p-2 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-white/50 dark:border-slate-700/50 shadow-sm">
                 <div className="flex items-center gap-2 pl-2 pr-1 border-r border-gray-200 dark:border-slate-700">
                   <span className="text-sm font-black text-blue-600 dark:text-blue-400 font-mono tracking-wider">{format(currentTime, "HH:mm:ss")}</span>
@@ -285,18 +286,31 @@ export default function Dashboard() {
                   {user && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 rounded-full p-0 border-2 border-white dark:border-slate-600 shadow-sm overflow-hidden">
+                        <Button variant="ghost" className="h-8 w-8 rounded-full p-0 border-2 border-white dark:border-slate-600 shadow-sm overflow-hidden relative">
                           <Avatar className="h-full w-full">
                             <AvatarImage src={user.photoURL || ""} />
                             <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
                           </Avatar>
+                          {profile?.role === 'admin' && (
+                            <div className="absolute -top-1 -right-1 bg-indigo-600 text-white p-0.5 rounded-full border border-white scale-75">
+                              <Shield size={10} strokeWidth={3} />
+                            </div>
+                          )}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-56 rounded-2xl" align="center">
                         <DropdownMenuItem asChild><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Yönetici Paneli</Link></DropdownMenuItem>
+                        <DropdownMenuItem asChild><Link href="/profile"><User className="mr-2 h-4 w-4" /> Profil Ayarları</Link></DropdownMenuItem>
                         <DropdownMenuItem onClick={logout} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /> Çıkış Yap</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  )}
+                  {profile?.role === 'admin' && (
+                    <Link href="/admin">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 transition-all ml-1" title="Hızlı Yönetici Girişi">
+                        <Shield size={16} strokeWidth={2.5} />
+                      </Button>
+                    </Link>
                   )}
                 </div>
               </div>
