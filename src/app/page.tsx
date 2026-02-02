@@ -309,10 +309,16 @@ export default function Dashboard() {
                   <span className="text-xs font-bold text-gray-500 underline decoration-blue-500/30">Yakıt</span>
                 </div>
                 <div className="flex items-center gap-6">
-                  {['Benzin', 'Motorin', 'LPG'].map((fuel, i) => (
-                    <div key={fuel} className="flex flex-col">
-                      <span className={cn("text-[9px] font-black uppercase", i === 0 ? "text-emerald-500" : i === 1 ? "text-amber-500" : "text-blue-500")}>{fuel}</span>
-                      <span className="text-base font-black tracking-tighter">₺{Object.values(fuelPrices)[i].toFixed(2)}</span>
+                  {[
+                    { label: 'Benzin', key: 'benzin' as const, color: 'text-emerald-500' },
+                    { label: 'Motorin', key: 'motorin' as const, color: 'text-amber-500' },
+                    { label: 'LPG', key: 'lpg' as const, color: 'text-blue-500' }
+                  ].map((fuel) => (
+                    <div key={fuel.label} className="flex flex-col">
+                      <span className={cn("text-[9px] font-black uppercase", fuel.color)}>{fuel.label}</span>
+                      <span className="text-base font-black tracking-tighter">
+                        ₺{fuelPrices[fuel.key]?.toFixed(2) || "0.00"}
+                      </span>
                     </div>
                   ))}
                 </div>
