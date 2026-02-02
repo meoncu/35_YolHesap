@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YolHesap AI - Premium Yol ve Maliyet Hesaplama</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-glow"></div>
+    <main class="app-container">
+        <header>
+            <div class="logo">
+                <span class="logo-icon">📍</span>
+                <h1>Yol<span>Hesap</span></h1>
+            </div>
+            <p class="subtitle">Google Stitch AI Destekli Tasarım</p>
+        </header>
+
+        <section class="calculator-card">
+            <div class="input-group">
+                <label for="origin">Kalkış Noktası</label>
+                <input type="text" id="origin" placeholder="Şehir veya adres girin...">
+            </div>
+            <div class="input-group">
+                <label for="destination">Varış Noktası</label>
+                <input type="text" id="destination" placeholder="Hedef adresi girin...">
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="label">Mesafe</span>
+                    <span class="value" id="dist-val">-- km</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">Tahmini Süre</span>
+                    <span class="value" id="time-val">-- dk</span>
+                </div>
+            </div>
+
+            <button id="calculate-btn" class="primary-btn">Rotayı Oluştur</button>
+        </section>
+
+        <div id="status-indicator" class="ai-status">
+            <span class="pulse"></span>
+            Stitch AI Tasarım Modu Aktif
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
