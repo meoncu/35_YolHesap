@@ -17,11 +17,17 @@ import {
     TrendingUp,
     CalendarDays,
     Car,
-    ArrowRight,
-    Droplets,
+    ChevronLeft,
+    ChevronRight,
     Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { addMonths, subMonths } from "date-fns";
+
+interface ReportStats {
+    daily: any[];
+    byDriver: any[];
+}
 
 export default function ReportsPage() {
     const { user } = useAuth();
@@ -68,15 +74,14 @@ export default function ReportsPage() {
     }, [trips, selectedMonth]);
 
     // Calculate Stats
-    const stats = useMemo(() => {
-        if (!fuelPrices) return [];
+    const stats: ReportStats = useMemo(() => {
+        if (!fuelPrices || !filteredTrips.length) return { daily: [], byDriver: [] };
 
         const dailyStats = filteredTrips.map(trip => {
             const driver = getDriverInfo(trip.driverUid);
             const vehicle = driver?.vehicle;
 
             // Default distance if missing (mock logic: round trip estimate 50km or random for demo if 0)
-            // Ideally this comes from DB "distanceKm"
             const distance = trip.distanceKm || 50;
 
             const consumptionRate = vehicle?.consumption || 7.0; // Default 7L/100km
@@ -87,7 +92,7 @@ export default function ReportsPage() {
             if (fuelType === 'benzin') pricePerLiter = fuelPrices.benzin;
             else if (fuelType === 'motorin') pricePerLiter = fuelPrices.motorin;
             else if (fuelType === 'lpg') pricePerLiter = fuelPrices.lpg;
-            else pricePerLiter = 0; // electric logic todo
+            else pricePerLiter = fuelPrices.benzin; // default
 
             const litersConsumed = (distance / 100) * consumptionRate;
             const cost = litersConsumed * pricePerLiter;
@@ -125,8 +130,11 @@ export default function ReportsPage() {
         return { daily: dailyStats, byDriver: Object.values(driverStats) };
     }, [filteredTrips, fuelPrices, users]);
 
-    const totalMonthCost = stats.daily?.reduce((acc, curr) => acc + curr.cost, 0) || 0;
-    const totalMonthKm = stats.daily?.reduce((acc, curr) => acc + curr.distance, 0) || 0;
+    const totalMonthCost = stats.daily.reduce((acc: number, curr: any) => acc + (curr.cost || 0), 0);
+    const totalMonthKm = stats.daily.reduce((acc: number, curr: any) => acc + (curr.distance || 0), 0);
+
+    const nextMonth = () => setSelectedMonth(addMonths(selectedMonth, 1));
+    const prevMonth = () => setSelectedMonth(subMonths(selectedMonth, 1));
 
     return (
         <AppLayout>
@@ -135,7 +143,17 @@ export default function ReportsPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-black text-gray-900 tracking-tight">Yakıt Raporu</h1>
-                        <p className="text-gray-500 font-medium">Ankara akaryakıt verilerine göre hesaplanan maliyetler.</p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                                <ChevronLeft size={20} className="text-gray-400" />
+                            </button>
+                            <span className="text-lg font-bold text-blue-600 min-w-[140px] text-center">
+                                {format(selectedMonth, "MMMM yyyy", { locale: tr })}
+                            </span>
+                            <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                                <ChevronRight size={20} className="text-gray-400" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Fuel Prices Widget */}
@@ -143,20 +161,20 @@ export default function ReportsPage() {
                         <div className="flex items-center gap-2 bg-gradient-to-r from-slate-900 to-slate-800 p-3 rounded-2xl text-white shadow-lg overflow-x-auto">
                             <div className="flex flex-col px-3 border-r border-slate-700/50">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ANKARA</span>
-                                <span className="text-xs font-medium opacity-60">Ortalama</span>
+                                <span className="text-xs font-medium opacity-60">Fiyatlar (₺)</span>
                             </div>
                             <div className="flex items-center gap-4 px-2">
                                 <div className="flex flex-col items-center">
                                     <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Benzin</span>
-                                    <span className="text-lg font-black tracking-tighter">{fuelPrices.benzin.toFixed(2)}₺</span>
+                                    <span className="text-lg font-black tracking-tighter">{fuelPrices.benzin.toFixed(2)}</span>
                                 </div>
                                 <div className="flex flex-col items-center">
                                     <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">Motorin</span>
-                                    <span className="text-lg font-black tracking-tighter">{fuelPrices.motorin.toFixed(2)}₺</span>
+                                    <span className="text-lg font-black tracking-tighter">{fuelPrices.motorin.toFixed(2)}</span>
                                 </div>
                                 <div className="flex flex-col items-center">
                                     <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider">LPG</span>
-                                    <span className="text-lg font-black tracking-tighter">{fuelPrices.lpg.toFixed(2)}₺</span>
+                                    <span className="text-lg font-black tracking-tighter">{fuelPrices.lpg.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -202,17 +220,19 @@ export default function ReportsPage() {
 
                 {/* Monthly Driver Breakdown */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 px-1">
                         <Car size={20} className="text-blue-600" />
-                        Araç Bazlı Aylık Tüketim
+                        Araç Bazlı {format(selectedMonth, "MMMM", { locale: tr })} Özeti
                     </h2>
                     <div className="grid gap-4 md:grid-cols-2">
-                        {stats.byDriver?.map((driverData, idx) => (
+                        {stats.byDriver.map((driverData: any, idx: number) => (
                             <div key={idx} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-2xl bg-gray-50 flex items-center justify-center text-xl font-bold text-gray-400">
-                                        {driverData.name.charAt(0)}
-                                    </div>
+                                    <Avatar className="h-12 w-12 rounded-2xl">
+                                        <AvatarFallback className="bg-gray-100 text-gray-400 font-bold text-lg">
+                                            {driverData.name.charAt(0)}
+                                        </AvatarFallback>
+                                    </Avatar>
                                     <div>
                                         <h4 className="font-bold text-gray-900">{driverData.name}</h4>
                                         <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -228,9 +248,9 @@ export default function ReportsPage() {
                                 </div>
                             </div>
                         ))}
-                        {stats.byDriver?.length === 0 && (
+                        {stats.byDriver.length === 0 && (
                             <div className="col-span-2 text-center py-8 text-gray-400 font-medium bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                                Bu ay veri bulunamadı.
+                                Bu döneme ait veri bulunamadı.
                             </div>
                         )}
                     </div>
@@ -238,49 +258,94 @@ export default function ReportsPage() {
 
                 {/* Daily Detailed List */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 px-1">
                         <TrendingUp size={20} className="text-blue-600" />
-                        Günlük Tüketim Detayları
+                        Günlük Detaylı Döküm
                     </h2>
                     <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50/50 border-b border-gray-100">
-                                    <tr>
-                                        <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px]">Tarih</th>
-                                        <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px]">Sürücü / Plaka</th>
-                                        <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Mesafe</th>
-                                        <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Tüketim</th>
-                                        <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Maliyet</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {stats.daily?.map((row, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                                            <td className="px-6 py-4 font-bold text-gray-500">
-                                                {format(parseISO(row.date), "d MMM, EEE", { locale: tr })}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-900">{row.driverName}</span>
-                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{row.plate} • {row.fuelType}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="font-bold text-gray-700">{row.distance.toFixed(1)} km</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="font-bold text-gray-500">{row.litersConsumed.toFixed(1)} lt</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="font-black text-[#1E293B] bg-blue-50/50 px-3 py-1 rounded-lg inline-block group-hover:bg-blue-100 transition-colors">
-                                                    {row.cost.toFixed(2)} ₺
-                                                </div>
-                                            </td>
+                        {stats.daily.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                        <tr>
+                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px]">Tarih</th>
+                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px]">Sürücü / Araç</th>
+                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Mesafe</th>
+                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Tüketim</th>
+                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Maliyet</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {stats.daily.map((row: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
+                                                <td className="px-6 py-4 font-bold text-gray-500 whitespace-nowrap">
+                                                    {format(parseISO(row.date), "d MMM, EEE", { locale: tr })}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-gray-900">{row.driverName}</span>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{row.plate} • {row.fuelType}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="font-bold text-gray-700">{row.distance.toFixed(1)} km</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="font-bold text-gray-500">{row.litersConsumed.toFixed(1)} lt</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="font-black text-[#1E293B] bg-blue-50/50 px-3 py-1 rounded-lg inline-block group-hover:bg-blue-100 transition-colors">
+                                                        {row.cost.toFixed(2)} ₺
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="py-20 text-center text-gray-400 font-medium">
+                                Hiç sefer kaydı bulunamadı.
+                            </div>
+                        )}
+                    </div>
+                </div>
+                {/* Yearly/Monthly Overview */}
+                <div className="space-y-4">
+                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 px-1">
+                        <CalendarDays size={20} className="text-blue-600" />
+                        Yıllık-Aylık Özet ({format(selectedMonth, "yyyy")})
+                    </h2>
+                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden p-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {Array.from({ length: 12 }).map((_, i) => {
+                                const monthDate = new Date(selectedMonth.getFullYear(), i, 1);
+                                const monthTrips = trips.filter(t => {
+                                    const d = parseISO(t.date);
+                                    return d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth();
+                                });
+
+                                const monthKm = monthTrips.reduce((acc, t) => acc + (t.distanceKm || 50), 0);
+                                const isCurrent = i === selectedMonth.getMonth();
+
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => setSelectedMonth(monthDate)}
+                                        className={cn(
+                                            "p-4 rounded-2xl border transition-all text-center group",
+                                            isCurrent
+                                                ? "bg-blue-600 border-blue-600 text-white shadow-lg"
+                                                : "bg-gray-50 border-gray-100 hover:border-blue-200 text-gray-600"
+                                        )}
+                                    >
+                                        <div className={cn("text-[10px] font-bold uppercase tracking-widest mb-1", isCurrent ? "text-blue-100" : "text-gray-400 group-hover:text-blue-400")}>
+                                            {format(monthDate, "MMMM", { locale: tr })}
+                                        </div>
+                                        <div className="text-lg font-black tracking-tight">{monthKm} <span className="text-[10px] font-bold">KM</span></div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -288,3 +353,4 @@ export default function ReportsPage() {
         </AppLayout>
     );
 }
+
