@@ -155,93 +155,95 @@ export default function CalendarPage() {
                     </div>
                 </header>
 
-                <Card className="border-none shadow-md bg-white p-2">
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={handleDateSelect}
-                        className="rounded-md border-none flex justify-center"
-                        locale={tr}
-                    />
-                </Card>
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    <Card className="border-none shadow-md bg-white p-2 w-full lg:w-auto shrink-0">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={handleDateSelect}
+                            className="rounded-md border-none flex justify-center"
+                            locale={tr}
+                        />
+                    </Card>
 
-                <section className="space-y-3">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest pl-1">Seçili Gün Özeti</h3>
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={date?.toString()}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                        >
-                            <Card className="border-none shadow-sm overflow-hidden">
-                                <CardHeader className="bg-gray-50 flex flex-row items-center justify-between space-y-0 py-3">
-                                    <span className="text-sm font-semibold">{date ? format(date, "d MMMM yyyy, EEEE", { locale: tr }) : "Gün seçiniz"}</span>
-                                    <CalendarIcon size={16} className="text-[#143A5A]" />
-                                </CardHeader>
-                                <CardContent className="pt-4">
-                                    {loading ? (
-                                        <div className="flex justify-center py-6">
-                                            <Loader2 className="h-6 w-6 animate-spin text-[#143A5A]" />
-                                        </div>
-                                    ) : currentTrip ? (
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-[#143A5A]">
-                                                    <Car size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Şoför</p>
-                                                    <p className="font-semibold text-gray-900">
-                                                        {members.find(m => m.uid === currentTrip.driverUid)?.name || "Bilinmiyor"}
-                                                    </p>
-                                                </div>
+                    <section className="space-y-3 flex-1 w-full">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest pl-1">Seçili Gün Özeti</h3>
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={date?.toString()}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                            >
+                                <Card className="border-none shadow-sm overflow-hidden h-full">
+                                    <CardHeader className="bg-gray-50 flex flex-row items-center justify-between space-y-0 py-3">
+                                        <span className="text-sm font-semibold">{date ? format(date, "d MMMM yyyy, EEEE", { locale: tr }) : "Gün seçiniz"}</span>
+                                        <CalendarIcon size={16} className="text-[#143A5A]" />
+                                    </CardHeader>
+                                    <CardContent className="pt-4">
+                                        {loading ? (
+                                            <div className="flex justify-center py-6">
+                                                <Loader2 className="h-6 w-6 animate-spin text-[#143A5A]" />
                                             </div>
+                                        ) : currentTrip ? (
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-[#143A5A]">
+                                                        <Car size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Şoför</p>
+                                                        <p className="font-semibold text-gray-900">
+                                                            {members.find(m => m.uid === currentTrip.driverUid)?.name || "Bilinmiyor"}
+                                                        </p>
+                                                    </div>
+                                                </div>
 
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                                                    <Users size={20} />
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                                        <Users size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Katılımcılar</p>
+                                                        <p className="text-sm text-gray-700">
+                                                            {currentTrip.participants.length > 0
+                                                                ? currentTrip.participants.map(p => members.find(m => m.uid === p)?.name).filter(Boolean).join(", ")
+                                                                : "Kimse katılmadı"}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Katılımcılar</p>
-                                                    <p className="text-sm text-gray-700">
-                                                        {currentTrip.participants.length > 0
-                                                            ? currentTrip.participants.map(p => members.find(m => m.uid === p)?.name).filter(Boolean).join(", ")
-                                                            : "Kimse katılmadı"}
-                                                    </p>
+                                                {profile?.role === 'admin' && (
+                                                    <Button
+                                                        onClick={() => setIsDialogOpen(true)}
+                                                        variant="outline"
+                                                        className="w-full mt-2"
+                                                    >
+                                                        Düzenle
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-6">
+                                                <div className="flex justify-center mb-2 text-gray-300">
+                                                    <Info size={40} />
                                                 </div>
+                                                <p className="text-gray-500 text-sm">Bu gün için henüz kayıt girilmemiş.</p>
+                                                {profile?.role === 'admin' && (
+                                                    <Button
+                                                        onClick={() => setIsDialogOpen(true)}
+                                                        className="mt-4 bg-[#143A5A]"
+                                                    >
+                                                        Kayıt Ekle
+                                                    </Button>
+                                                )}
                                             </div>
-                                            {profile?.role === 'admin' && (
-                                                <Button
-                                                    onClick={() => setIsDialogOpen(true)}
-                                                    variant="outline"
-                                                    className="w-full mt-2"
-                                                >
-                                                    Düzenle
-                                                </Button>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-6">
-                                            <div className="flex justify-center mb-2 text-gray-300">
-                                                <Info size={40} />
-                                            </div>
-                                            <p className="text-gray-500 text-sm">Bu gün için henüz kayıt girilmemiş.</p>
-                                            {profile?.role === 'admin' && (
-                                                <Button
-                                                    onClick={() => setIsDialogOpen(true)}
-                                                    className="mt-4 bg-[#143A5A]"
-                                                >
-                                                    Kayıt Ekle
-                                                </Button>
-                                            )}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    </AnimatePresence>
-                </section>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        </AnimatePresence>
+                    </section>
+                </div>
 
                 {/* Monthly Trip List (Moved from Dashboard) */}
                 <section className="space-y-3 pt-4 border-t border-gray-100">
