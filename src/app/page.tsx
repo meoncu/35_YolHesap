@@ -22,6 +22,7 @@ import {
   Moon,
   Info,
   Map as MapIcon,
+  Navigation,
   Sun,
   Cloud,
   CloudRain,
@@ -646,11 +647,41 @@ export default function Dashboard() {
                 <p className="text-xs text-blue-100/60 font-bold leading-relaxed max-w-[250px]">En hızlı rotayı keşfet ve canlı trafik verilerini incele.</p>
               </div>
 
-              <Link href="/map" className="block relative z-10 w-full">
-                <Button className="mt-8 bg-white text-[#0B1C2D] hover:bg-blue-50 rounded-2xl p-6 font-black text-[13px] uppercase tracking-wider w-full shadow-lg group">
-                  Rotayı Gör <ChevronRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+              <div className="space-y-3 relative z-10 mt-8">
+                <Link href="/map" className="block w-full">
+                  <Button className="bg-white text-[#0B1C2D] hover:bg-blue-50 rounded-2xl p-6 font-black text-[13px] uppercase tracking-wider w-full shadow-lg group">
+                    Rotayı Gör <ChevronRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+
+                <Button
+                  onClick={() => {
+                    const now = new Date();
+                    const currentHour = now.getHours();
+                    const currentMinute = now.getMinutes();
+                    // Check if it is evening (>= 17:30)
+                    const isEvening = currentHour > 17 || (currentHour === 17 && currentMinute >= 30);
+
+                    let destLat, destLng;
+                    if (isEvening) {
+                      // To Etimesgut
+                      destLat = 39.951298;
+                      destLng = 32.649365;
+                    } else {
+                      // To Tarım Kredi (Söğütözü)
+                      destLat = 39.917719;
+                      destLng = 32.789913;
+                    }
+
+                    // Open Google Maps Navigation
+                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`, '_blank');
+                  }}
+                  className="bg-green-600 text-white hover:bg-green-700 rounded-2xl p-6 font-black text-[13px] uppercase tracking-wider w-full shadow-lg group border border-green-500"
+                >
+                  <Navigation size={18} className="mr-2" />
+                  Navigasyon Başlat
                 </Button>
-              </Link>
+              </div>
             </div>
           </div>
         </div>
