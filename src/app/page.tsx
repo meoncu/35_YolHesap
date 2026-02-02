@@ -85,8 +85,226 @@ export default function Dashboard() {
   const [todayParticipants, setTodayParticipants] = useState<{ profile: UserProfile, isDriver: boolean }[]>([]);
   const [isDriverDialogOpen, setIsDriverDialogOpen] = useState(false);
   const [isSeatingPlanOpen, setIsSeatingPlanOpen] = useState(false);
+  const [isUpdatingDriver, setIsUpdatingDriver] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // ... (rest of the state from original file)
+  const [allTrips, setAllTrips] = useState<Trip[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(false); // Dark Mode State
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = format(currentTime, "HH:mm");
+  const isMorningRush = timeStr >= "08:00" && timeStr <= "08:30";
+  const isEvening = timeStr >= "17:30" && timeStr <= "18:00";
+  // Updated isDark definition for broader night coverage
+  const isNightTime = timeStr >= "18:00" || timeStr < "06:00";
+
+  // Auto-switch to dark mode in the evening
+  useEffect(() => {
+    if (isNightTime) {
+      setIsDarkMode(true);
+    } else {
+      setIsDarkMode(false);
+    }
+  }, [isNightTime]);
+
+  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
+
+  // Mock Weather Data Generator
+  const weatherForecast = useMemo(() => {
+    const types = ['sunny', 'cloudy', 'rainy', 'snowy'] as const;
+    return Array.from({ length: 6 }).map((_, i) => {
+      const date = addDays(new Date(), i);
+      // Deterministic pseudo-random based on date
+      const hash = date.getDate() + date.getMonth();
+      const type = types[hash % 4];
+      let tempDay = 0;
+      let tempNight = 0;
+
+      if (date.getMonth() <= 2 || date.getMonth() >= 10) { // Winter/Late Autumn
+        tempDay = 5 + (hash % 10);
+        tempNight = -2 + (hash % 5);
+      } else {
+        tempDay = 20 + (hash % 10);
+        tempNight = 15 + (hash % 5);
+      }
+
+      return {
+        date,
+        type,
+        tempDay,
+        tempNight,
+        wind: 10 + (hash % 20)
+      };
+    });
+  }, []);
+
+  const getWeatherIcon = (type: string) => {
+    switch (type) {
+      case 'sunny': return <Sun size={16} className="text-amber-500" />;
+      case 'cloudy': return <Cloud size={16} className="text-gray-400" />;
+      case 'rainy': return <CloudRain size={16} className="text-blue-400" />;
+      case 'snowy': return <Snowflake size={16} className="text-cyan-300" />;
+      default: return <Sun size={16} className="text-amber-500" />;
+    }
+  };
+
+  const fetchData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const [tripsData, allUsers] = await Promise.all([
+        getAllTrips(),
+        getUsers()
+      ]);
+
+      setAllTrips(tripsData);
+      setMembers(allUsers);
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const selectedMonthStr = format(selectedDate, "yyyy-MM");
+
+      const monthlyTrips = tripsData.filter(t => t.date.startsWith(selectedMonthStr));
+      let today = tripsData.find(t => t.date === todayStr);
+
+      // FALLBACK LOGIC: If no trip today, find the most recent one
+      if (!today) {
+        const pastTrips = allTrips
+          .filter(t => t.date < todayStr)
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        if (pastTrips.length > 0) {
+          // Use previous trip as template
+          today = {
+            ...pastTrips[0],
+            date: todayStr,
+            isInherited: true
+          } as any;
+          delete (today as any).id;
+        }
+      }
+
+      // Stats calculation
+      const dailyFee = 100;
+      const getFee = (type?: string) => type === 'full' || !type ? dailyFee : dailyFee / 2;
+
+      const asPassenger = monthlyTrips.filter(t => t.participants.includes(user.uid) && t.driverUid !== user.uid);
+      const asDriver = monthlyTrips.filter(t => t.driverUid === user.uid);
+
+      const debt = asPassenger.reduce((acc, t) => acc + getFee(t.type), 0);
+      const credit = asDriver.reduce((acc, trip) => acc + (trip.participants.length * getFee(trip.type)), 0);
+
+      let driverName = "Belli Değil";
+      let todayDetails: { profile: UserProfile, isDriver: boolean }[] = [];
+
+      if (today) {
+        setTodayTrip(today);
+        const driver = allUsers.find(u => u.uid === today.driverUid);
+        driverName = driver ? driver.name : "Bilinmiyor";
+        setHasJoined(today.participants.includes(user.uid));
+
+        const participantProfiles = allUsers.filter(u => today.participants.includes(u.uid));
+        todayDetails = participantProfiles.map(p => ({
+          profile: p,
+          isDriver: p.uid === today.driverUid
+        })).sort((a, b) => (a.isDriver === b.isDriver) ? 0 : a.isDriver ? -1 : 1);
+      }
+
+      setTodayParticipants(todayDetails);
+      setStats({
+        totalTrips: monthlyTrips.length,
+        monthlyDebt: debt,
+        monthlyCredit: credit,
+        nextDriver: driverName
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [user, selectedDate]);
+
+  // GPS TRACKING LOGIC
+  useEffect(() => {
+    if (!user || !todayTrip?.driverUid || user.uid !== todayTrip.driverUid) return;
+
+    const isMorningWindow = timeStr >= "08:00" && timeStr <= "09:00";
+    const isEveningWindow = timeStr >= "17:30" && timeStr <= "18:30";
+
+    if (!isMorningWindow && !isEveningWindow) return;
+
+    let watchId: number;
+    if ("geolocation" in navigator) {
+      // toast.info("Sürücü takibi aktif. Güzergâhınız kaydediliyor...", { id: "gps-tracking" });
+
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          saveLocation(user.uid, latitude, longitude).catch(console.error);
+        },
+        (error) => {
+          console.error("GPS Error:", error);
+          // toast.error("GPS erişimi sağlanamadı. Lütfen izinleri kontrol edin.");
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [user, todayTrip?.driverUid, timeStr]);
+
+  const handleUpdateTrip = async (updates: { driverUid?: string, participants?: string[] }) => {
+    if (!user) return;
+    setIsUpdatingDriver(true);
+    try {
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const baseTrip = todayTrip || {
+        date: todayStr,
+        groupId: "main-group",
+        driverUid: "",
+        participants: [],
+        totalCollected: 0,
+        type: "full"
+      };
+
+      const updatedTrip = {
+        ...baseTrip,
+        ...updates
+      };
+
+      if ((baseTrip as any).isInherited) {
+        delete (updatedTrip as any).isInherited;
+      }
+
+      await saveTrip(updatedTrip);
+      toast.success("Yolculuk güncellendi.");
+      if (updates.driverUid) setIsDriverDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error updating trip:", error);
+      toast.error("Güncelleme sırasında hata oluştu.");
+    } finally {
+      setIsUpdatingDriver(false);
+    }
+  };
+
+  const toggleParticipant = (uid: string) => {
+    const currentParticipants = todayTrip?.participants || [];
+    const newParticipants = currentParticipants.includes(uid)
+      ? currentParticipants.filter((id: string) => id !== uid)
+      : [...currentParticipants, uid];
+
+    handleUpdateTrip({ participants: newParticipants });
+  };
 
   return (
     <AppLayout>
@@ -95,8 +313,6 @@ export default function Dashboard() {
         isDarkMode ? "bg-slate-900 text-white" : "bg-transparent", // Main Dark Mode styles
         isEvening ? "bg-gradient-to-b from-indigo-900/50 to-slate-900" : ""
       )}>
-        {/* ... (Header Sections remain same) ... */}
-
         {/* Header Section with Weather and Profile */}
         <section className="flex flex-col gap-6 pt-0">
           <div className="flex items-start justify-between">
@@ -207,32 +423,23 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 5-Day Weather Widget */}
+          {/* 5-Day Weather Widget - Optimized */}
           <div className={cn("w-full backdrop-blur-md rounded-2xl border shadow-sm p-3 overflow-x-auto no-scrollbar", isDarkMode ? "bg-slate-800/80 border-slate-700" : "bg-white/60 border-white/50")}>
-            <div className="flex items-center justify-between min-w-max gap-4">
-              <div className="flex items-center gap-2 pr-4 border-r border-gray-100">
-                <div className="bg-blue-50 p-2 rounded-xl text-blue-500">
-                  <MapIcon size={16} />
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider opacity-60">Güzergah</div>
-                  <div className={cn("text-xs font-black", isDarkMode ? "text-slate-200" : "text-gray-700")}>Etimesgut → Söğütözü</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between min-w-max gap-3 w-full">
+              {/* Removed Route Info as requested */}
+              <div className="flex items-center justify-between gap-2 w-full">
                 {weatherForecast.map((day, idx) => (
                   <div key={idx} className={cn(
-                    "flex flex-col items-center justify-center gap-1 min-w-[50px] p-2 rounded-xl transition-all",
+                    "flex flex-col items-center justify-center gap-1 flex-1 p-2 rounded-xl transition-all",
                     idx === 0 ? "bg-blue-50/80 ring-1 ring-blue-100" : "hover:bg-gray-50"
                   )}>
-                    <span className="text-[9px] font-bold text-gray-400 uppercase">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase text-center">
                       {idx === 0 ? "Bugün" : format(day.date, "EEE", { locale: tr })}
                     </span>
                     {getWeatherIcon(day.type)}
                     <div className="flex items-center gap-0.5">
                       <span className="text-[10px] font-black text-gray-700">{day.tempDay}°</span>
-                      <span className="text-[8px] font-bold text-gray-400 hidden sm:inline">/{day.tempNight}°</span>
+                      <span className="text-[8px] font-bold text-gray-400 sm:inline hidden">/{day.tempNight}°</span>
                     </div>
                   </div>
                 ))}
