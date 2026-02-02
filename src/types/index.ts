@@ -10,6 +10,12 @@ export interface UserProfile {
     isApproved?: boolean;
     isVerified?: boolean;
     createdAt?: any;
+    vehicle?: {
+        plate: string;
+        model: string;
+        fuelType: 'benzin' | 'motorin' | 'lpg' | 'elektrik';
+        consumption: number; // liters per 100km
+    };
 }
 
 export interface Group {
@@ -29,6 +35,7 @@ export interface Trip {
     totalCollected: number;
     type?: 'morning' | 'evening' | 'full';
     routeId?: string;
+    distanceKm?: number;
 }
 
 export interface Route {

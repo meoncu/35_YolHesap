@@ -81,7 +81,18 @@ export default function AdminPage() {
         name: string;
         photoURL: string;
         role: UserRole;
-    }>({ name: "", photoURL: "", role: "user" });
+        vehicle: {
+            plate: string;
+            model: string;
+            fuelType: 'benzin' | 'motorin' | 'lpg' | 'elektrik';
+            consumption: number;
+        };
+    }>({
+        name: "",
+        photoURL: "",
+        role: "user",
+        vehicle: { plate: "", model: "", fuelType: "benzin", consumption: 7.0 }
+    });
 
     useEffect(() => {
         fetchUsers();
@@ -129,7 +140,13 @@ export default function AdminPage() {
         setEditForm({
             name: user.name || "",
             photoURL: user.photoURL || "",
-            role: user.role || "user"
+            role: user.role || "user",
+            vehicle: {
+                plate: user.vehicle?.plate || "",
+                model: user.vehicle?.model || "",
+                fuelType: user.vehicle?.fuelType || "benzin",
+                consumption: user.vehicle?.consumption || 7.0
+            }
         });
         setIsEditDialogOpen(true);
     };
@@ -140,7 +157,8 @@ export default function AdminPage() {
             await updateUserProfile(editingUser.uid, {
                 name: editForm.name,
                 photoURL: editForm.photoURL,
-                role: editForm.role as any
+                role: editForm.role as any,
+                vehicle: editForm.vehicle
             });
 
             setUsers(users.map(u => u.uid === editingUser.uid ? { ...u, ...editForm, role: editForm.role as UserRole } : u));
@@ -398,7 +416,7 @@ export default function AdminPage() {
                             Kullanıcının site genelinde görünen ismini buradan değiştirebilirsiniz.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
+                    <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto px-1">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Site İçi Görünen İsim</label>
                             <Input
@@ -419,13 +437,77 @@ export default function AdminPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Rol</label>
                             <select
-                                className="w-full flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 value={editForm.role}
                                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
                             >
                                 <option value="user">Kullanıcı</option>
                                 <option value="admin">Yönetici</option>
                             </select>
+                        </div>
+
+                        <div className="border-t pt-4 mt-4 space-y-4">
+                            <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-1 h-4 bg-blue-500 rounded-full" /> Araç Bilgileri
+                            </h4>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500">Plaka</label>
+                                    <Input
+                                        value={editForm.vehicle.plate}
+                                        onChange={(e) => setEditForm({
+                                            ...editForm,
+                                            vehicle: { ...editForm.vehicle, plate: e.target.value.toUpperCase() }
+                                        })}
+                                        placeholder="06 ABC 123"
+                                        className="uppercase"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500">Marka / Model</label>
+                                    <Input
+                                        value={editForm.vehicle.model}
+                                        onChange={(e) => setEditForm({
+                                            ...editForm,
+                                            vehicle: { ...editForm.vehicle, model: e.target.value }
+                                        })}
+                                        placeholder="Fiat Egea"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500">Yakıt Tipi</label>
+                                    <select
+                                        className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={editForm.vehicle.fuelType}
+                                        onChange={(e) => setEditForm({
+                                            ...editForm,
+                                            vehicle: { ...editForm.vehicle, fuelType: e.target.value as any }
+                                        })}
+                                    >
+                                        <option value="benzin">Benzin</option>
+                                        <option value="motorin">Motorin (Dizel)</option>
+                                        <option value="lpg">LPG</option>
+                                        <option value="elektrik">Elektrik</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500">Tüketim (L/100km)</label>
+                                    <Input
+                                        type="number"
+                                        step="0.1"
+                                        value={editForm.vehicle.consumption}
+                                        onChange={(e) => setEditForm({
+                                            ...editForm,
+                                            vehicle: { ...editForm.vehicle, consumption: parseFloat(e.target.value) || 0 }
+                                        })}
+                                        placeholder="7.5"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
