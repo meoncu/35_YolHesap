@@ -155,8 +155,8 @@ export default function CalendarPage() {
                     </div>
                 </header>
 
-                <div className="flex flex-col lg:flex-row gap-6 items-start">
-                    <Card className="border-none shadow-md bg-white p-2 w-full lg:w-auto shrink-0">
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                    <Card className="border-none shadow-md bg-white p-2 w-full md:w-auto shrink-0">
                         <Calendar
                             mode="single"
                             selected={date}
