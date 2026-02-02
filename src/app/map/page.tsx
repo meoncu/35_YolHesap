@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
-import { GoogleMap, useJsApiLoader, TrafficLayer, DirectionsService, DirectionsRenderer } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, TrafficLayer, DirectionsService, DirectionsRenderer, Marker } from "@react-google-maps/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Navigation, Info, Save, Layers, ArrowLeft, AlertCircle } from "lucide-react";
+import { MapPin, Navigation, Info, Save, Layers, ArrowLeft, AlertCircle, Car } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 const containerStyle = {
     width: '100%',
@@ -22,6 +24,9 @@ const center = {
 };
 
 const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = ["places", "geometry"];
+
+// Car Icon Path (SVG path for Google Maps Marker)
+const CAR_ICON_PATH = "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z";
 
 export default function MapPage() {
     const { profile } = useAuth();
@@ -56,20 +61,86 @@ export default function MapPage() {
     const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
     const [routeStats, setRouteStats] = useState<{ distance: string, duration: string } | null>(null);
 
-    // Calculate next 08:00 AM to avoid "past time" error
-    const nextMorning = useMemo(() => {
-        const date = new Date();
-        // If it's already past 08:00 today, set for tomorrow
-        if (date.getHours() >= 8) {
-            date.setDate(date.getDate() + 1);
+    // Live Location State
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [isCommuting, setIsCommuting] = useState(false);
+
+    // Locations
+    const LOCATIONS = {
+        ETIMESGUT: "Etimesgut Belediyesi, Etimesgut, Ankara",
+        TARIM_KREDI: "Tarım Kredi Kooperatifleri Merkez Birliği, Söğütözü, Çankaya, Ankara"
+    };
+
+    // Determine Route Direction based on Time (Switch at 17:30)
+    const routeConfig = useMemo(() => {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Check if it is evening (>= 17:30)
+        const isEvening = currentHour > 17 || (currentHour === 17 && currentMinute >= 30);
+
+        if (isEvening) {
+            return {
+                mode: "evening",
+                label: "Akşam Dönüş Rotası",
+                desc: "Söğütözü'nden (Tarım Kredi) Etimesgut'a dönüş rotası. İyi yolculuklar!",
+                origin: LOCATIONS.TARIM_KREDI,
+                destination: LOCATIONS.ETIMESGUT,
+                departureTime: now // Live traffic for now
+            };
+        } else {
+            return {
+                mode: "morning",
+                label: "Sabah Gidiş Rotası",
+                desc: "Etimesgut'tan Söğütözü'ne (Tarım Kredi GM) işe gidiş rotası. En hızlı güzergah.",
+                origin: LOCATIONS.ETIMESGUT,
+                destination: LOCATIONS.TARIM_KREDI,
+                departureTime: now // Live traffic for now
+            };
         }
-        date.setHours(8, 0, 0, 0);
-        return date;
     }, []);
 
-    // Default route points
-    const origin = "Etimesgut Belediyesi, Etimesgut, Ankara";
-    const destination = "Tarım Kredi Kooperatifleri Merkez Birliği, Söğütözü, Çankaya, Ankara";
+    // Check Commute Time & Geolocation
+    useEffect(() => {
+        // 1. Check Time
+        const checkTime = () => {
+            const now = new Date();
+            const mins = now.getHours() * 60 + now.getMinutes();
+            // 08:30-09:00 -> 510-540
+            // 17:30-18:30 -> 1050-1110
+            const isMorningCommute = mins >= 510 && mins <= 540;
+            const isEveningCommute = mins >= 1050 && mins <= 1110;
+            setIsCommuting(isMorningCommute || isEveningCommute);
+        };
+
+        checkTime();
+        const timeInterval = setInterval(checkTime, 60000); // Check every minute
+
+        // 2. Track Location
+        let watchId: number;
+        if (navigator.geolocation) {
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setUserLocation({ lat: latitude, lng: longitude });
+
+                    // Optional: Pan map to user if during commute and not manually moved?
+                    // keeping it simple for now, just update marker.
+                },
+                (error) => {
+                    console.error("Geolocation error:", error);
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+
+        return () => {
+            clearInterval(timeInterval);
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+        };
+    }, []);
+
 
     const onLoad = useCallback(function callback(map: google.maps.Map) {
         setMap(map);
@@ -80,7 +151,6 @@ export default function MapPage() {
     }, []);
 
     const saveRoute = () => {
-        // Save route logic
         console.log("Saving route...");
     };
 
@@ -96,7 +166,9 @@ export default function MapPage() {
                         </Link>
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight text-gray-900">Güzergâh & Trafik</h1>
-                            <p className="text-gray-500">Güncel trafik durumu ve rotalar.</p>
+                            <p className="text-gray-500">
+                                {routeConfig.mode === "morning" ? "Sabah trafiği ve rota durumu." : "Akşam trafiği ve dönüş rotası."}
+                            </p>
                         </div>
                     </div>
                     <Button
@@ -144,8 +216,8 @@ export default function MapPage() {
 
                             <DirectionsService
                                 options={{
-                                    destination: destination,
-                                    origin: origin,
+                                    destination: routeConfig.destination,
+                                    origin: routeConfig.origin,
                                     waypoints: [
                                         { location: "Sabancı Blv., Ankara", stopover: false },
                                         { location: "Ankara Blv., Ankara", stopover: false }
@@ -153,19 +225,21 @@ export default function MapPage() {
                                     travelMode: google.maps.TravelMode.DRIVING,
                                     provideRouteAlternatives: true,
                                     drivingOptions: {
-                                        departureTime: nextMorning,
+                                        departureTime: routeConfig.departureTime,
                                         trafficModel: google.maps.TrafficModel.BEST_GUESS
                                     }
                                 }}
                                 callback={(result, status) => {
-                                    if (result !== null && status === 'OK' && !directions) {
-                                        setDirections(result);
-                                        const route = result.routes[0].legs[0];
-                                        if (route && route.distance && route.duration) {
-                                            setRouteStats({
-                                                distance: route.distance.text,
-                                                duration: route.duration.text
-                                            });
+                                    if (result !== null && status === 'OK') {
+                                        if (!directions) {
+                                            setDirections(result);
+                                            const route = result.routes[0].legs[0];
+                                            if (route && route.distance && route.duration) {
+                                                setRouteStats({
+                                                    distance: route.distance.text,
+                                                    duration: route.duration.text
+                                                });
+                                            }
                                         }
                                     }
                                 }}
@@ -176,13 +250,30 @@ export default function MapPage() {
                                     directions={directions}
                                     options={{
                                         polylineOptions: {
-                                            strokeColor: "#1E3A8A",
+                                            strokeColor: routeConfig.mode === "morning" ? "#1E3A8A" : "#DC2626", // Blue for morning, Red for evening
                                             strokeWeight: 6,
                                             strokeOpacity: 0.8
                                         },
                                         markerOptions: {
-                                            visible: false // We can customise markers if needed
+                                            visible: true
                                         }
+                                    }}
+                                />
+                            )}
+
+                            {/* USER CAR MARKER */}
+                            {userLocation && (
+                                <Marker
+                                    position={userLocation}
+                                    title="Konumunuz"
+                                    icon={{
+                                        path: CAR_ICON_PATH,
+                                        fillColor: "#F59E0B", // Amber car
+                                        fillOpacity: 1,
+                                        strokeWeight: 1,
+                                        strokeColor: "#ffffff",
+                                        scale: 1.2,
+                                        anchor: new google.maps.Point(12, 12),
                                     }}
                                 />
                             )}
@@ -195,43 +286,24 @@ export default function MapPage() {
                             </div>
                         </div>
                     )}
-
-                    {/* Admin Controls Overlay */}
-                    {profile?.role === 'admin' && (
-                        <div className="absolute bottom-4 left-4 right-4 md:left-auto md:w-80">
-                            <Card className="glass border-none shadow-xl">
-                                <CardContent className="p-4 space-y-3">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-[#143A5A] uppercase tracking-wider">Yeni Rota Oluştur</p>
-                                        <div className="flex items-center gap-2">
-                                            <MapPin size={16} className="text-red-500" />
-                                            <Input defaultValue={origin} readOnly className="h-9 text-xs bg-gray-50 font-bold" />
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <Navigation size={16} className="text-blue-500" />
-                                            <Input defaultValue={destination} readOnly className="h-9 text-xs bg-gray-50 font-bold" />
-                                        </div>
-                                    </div>
-                                    <Button className="w-full h-9 bg-[#143A5A] text-xs" onClick={saveRoute}>
-                                        <Save size={16} className="mr-2" />
-                                        Rotayı Kaydet
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
                 </Card>
 
                 {/* Legend / Info */}
                 <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-start gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg text-blue-600 shrink-0">
-                        <Info size={20} />
+                    <div className={cn("p-2 rounded-lg shrink-0", routeConfig.mode === "morning" ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600")}>
+                        {routeConfig.mode === "morning" ? <Info size={20} /> : <Navigation size={20} />}
                     </div>
                     <div>
-                        <h4 className="text-sm font-bold text-gray-900">Sabah Rota Planı (08:00)</h4>
+                        <h4 className="text-sm font-bold text-gray-900">{routeConfig.label} ({format(new Date(), "HH:mm")})</h4>
                         <p className="text-xs text-gray-500 leading-tight mb-2">
-                            Etimesgut'tan Söğütözü'ne (Tarım Kredi GM) alternatifli sabah rotaları. Trafik durumuna göre en hızlı rota mavi ile gösterilmektedir.
+                            {routeConfig.desc}
                         </p>
+                        {userLocation && (
+                            <div className="flex items-center gap-2 mt-1 mb-2">
+                                <Car size={14} className="text-amber-600" />
+                                <span className="text-xs font-bold text-amber-700">Canlı Konum Aktif</span>
+                            </div>
+                        )}
                         {routeStats && (
                             <div className="flex items-center gap-4 mt-2">
                                 <div className="bg-green-50 px-3 py-1 rounded-lg border border-green-100">
