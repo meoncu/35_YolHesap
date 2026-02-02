@@ -99,3 +99,37 @@ export const getGroups = async (): Promise<Group[]> => {
 };
 
 import { format } from "date-fns";
+import { calculateRouteDistance } from "./fuel-service";
+
+export const calculateAndSaveTripDistance = async (tripId: string, date: string, driverUid: string) => {
+    try {
+        const points = await getRoute(date, driverUid);
+        if (!points || points.length < 2) return 0;
+
+        const routePoints = points.map((p: any) => ({
+            latitude: p.latitude,
+            longitude: p.longitude
+        }));
+
+        const distanceKm = calculateRouteDistance(routePoints);
+
+        // Update Trip
+        // tripId is typically "YYYY-MM-DD_groupId" but might be different if passed directly
+        // Assuming we pass the pure ID or constructing it. 
+        // Let's assume we update by constructing reference if we know the ID structure
+        // or passing the doc reference path.
+        // Actually, let's look at saveTrip: doc(collection(db, "trips"), `${trip.date}_${trip.groupId}`);
+        // So tripId matches `${date}_main-group` usually.
+
+        // For safety, let's assume tripId is the full doc ID
+        const tripRef = doc(db, "trips", tripId);
+        await updateDoc(tripRef, {
+            distanceKm: distanceKm
+        });
+
+        return distanceKm;
+    } catch (error) {
+        console.error("Error calculating/saving distance:", error);
+        return 0;
+    }
+};

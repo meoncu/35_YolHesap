@@ -31,7 +31,9 @@ import {
   Droplets,
   LogOut,
   Gauge,
-  Zap
+  Zap,
+  MoreVertical,
+  Fuel
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -635,99 +637,128 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </div>
 
+          {/* Reports & Group Section */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-amber-100 p-1.5 rounded-lg text-amber-600"><Fuel size={16} strokeWidth={3} /></div>
+              <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Raporlar</h2>
+            </div>
 
-      </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Link href="/reports" className="block cursor-pointer group">
+                <div className="bg-white rounded-[2rem] p-5 shadow-lg border border-gray-100 group-hover:shadow-xl transition-all h-full">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-3 text-amber-600">
+                    <Fuel size={24} />
+                  </div>
+                  <h3 className={"text-lg font-black mb-1 " + (isDarkMode ? "text-slate-900" : "text-gray-900")}>Yakıt Raporu</h3>
+                  <p className="text-xs text-gray-500 font-bold leading-relaxed">Aylık tüketim ve maliyet analizi.</p>
+                </div>
+              </Link>
 
-      <Dialog open={isSeatingPlanOpen} onOpenChange={setIsSeatingPlanOpen}>
-        <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 border-none shadow-2xl bg-transparent">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Araç Oturma Planı</DialogTitle>
-            <DialogDescription>Bugünkü yolculuk için oturma düzeni</DialogDescription>
-          </DialogHeader>
-          <div className="bg-white p-2 rounded-[2.5rem]">
-            <SeatingPlan
-              driver={members.find(m => m.uid === todayTrip?.driverUid)}
-              participants={todayTrip?.participants?.map((id: string) => members.find(m => m.uid === id)).filter(Boolean) as UserProfile[] || []}
-              className="bg-slate-100"
-            />
-            <div className="p-4 flex justify-center">
-              <Button onClick={() => setIsSeatingPlanOpen(false)} variant="ghost" className="rounded-xl">Kapat</Button>
+              <Link href="/group" className="block cursor-pointer group">
+                <div className="bg-white rounded-[2rem] p-5 shadow-lg border border-gray-100 group-hover:shadow-xl transition-all h-full">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-3 text-indigo-600">
+                    <Users size={24} />
+                  </div>
+                  <h3 className={"text-lg font-black mb-1 " + (isDarkMode ? "text-slate-900" : "text-gray-900")}>Grup Üyeleri</h3>
+                  <p className="text-xs text-gray-500 font-bold leading-relaxed">Üye listesi ve yönetimi.</p>
+                </div>
+              </Link>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      <Dialog open={isDriverDialogOpen} onOpenChange={setIsDriverDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-[#1E293B] p-6 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black tracking-tight">Günün Planlaması</DialogTitle>
-              <DialogDescription className="text-blue-100/60 font-medium">Şoför ve yolcuları düzenle</DialogDescription>
+
+        </div>
+
+        <Dialog open={isSeatingPlanOpen} onOpenChange={setIsSeatingPlanOpen}>
+          <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 border-none shadow-2xl bg-transparent">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Araç Oturma Planı</DialogTitle>
+              <DialogDescription>Bugünkü yolculuk için oturma düzeni</DialogDescription>
             </DialogHeader>
-          </div>
+            <div className="bg-white p-2 rounded-[2.5rem]">
+              <SeatingPlan
+                driver={members.find(m => m.uid === todayTrip?.driverUid)}
+                participants={todayTrip?.participants?.map((id: string) => members.find(m => m.uid === id)).filter(Boolean) as UserProfile[] || []}
+                className="bg-slate-100"
+              />
+              <div className="p-4 flex justify-center">
+                <Button onClick={() => setIsSeatingPlanOpen(false)} variant="ghost" className="rounded-xl">Kapat</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-          <div className="p-6 space-y-6 bg-white">
-            {/* Driver Section */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Günün Şoförü</label>
-              <Select onValueChange={(uid) => handleUpdateTrip({ driverUid: uid })} value={todayTrip?.driverUid || ""}>
-                <SelectTrigger className="w-full h-14 rounded-2xl border-gray-100 bg-gray-50 font-bold px-4">
-                  <SelectValue placeholder="Şoför Seç..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-gray-100 p-2">
+        <Dialog open={isDriverDialogOpen} onOpenChange={setIsDriverDialogOpen}>
+          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+            <div className="bg-[#1E293B] p-6 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black tracking-tight">Günün Planlaması</DialogTitle>
+                <DialogDescription className="text-blue-100/60 font-medium">Şoför ve yolcuları düzenle</DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <div className="p-6 space-y-6 bg-white">
+              {/* Driver Section */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Günün Şoförü</label>
+                <Select onValueChange={(uid) => handleUpdateTrip({ driverUid: uid })} value={todayTrip?.driverUid || ""}>
+                  <SelectTrigger className="w-full h-14 rounded-2xl border-gray-100 bg-gray-50 font-bold px-4">
+                    <SelectValue placeholder="Şoför Seç..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-gray-100 p-2">
+                    {members.map((member) => (
+                      <SelectItem key={member.uid} value={member.uid} className="rounded-xl py-3 font-bold">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={member.photoURL} />
+                            <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          {member.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Participants Section */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Yolcular</label>
+                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                   {members.map((member) => (
-                    <SelectItem key={member.uid} value={member.uid} className="rounded-xl py-3 font-bold">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
+                    <div
+                      key={member.uid}
+                      onClick={() => toggleParticipant(member.uid)}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer",
+                        todayTrip?.participants?.includes(member.uid)
+                          ? "bg-blue-50 border-blue-100"
+                          : "bg-gray-50 border-transparent opacity-60 grayscale hover:grayscale-0 hover:opacity-100"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
                           <AvatarImage src={member.photoURL} />
                           <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        {member.name}
+                        <span className="text-sm font-bold text-[#1E293B]">{member.name}</span>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Participants Section */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Yolcular</label>
-              <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {members.map((member) => (
-                  <div
-                    key={member.uid}
-                    onClick={() => toggleParticipant(member.uid)}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer",
-                      todayTrip?.participants?.includes(member.uid)
-                        ? "bg-blue-50 border-blue-100"
-                        : "bg-gray-50 border-transparent opacity-60 grayscale hover:grayscale-0 hover:opacity-100"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
-                        <AvatarImage src={member.photoURL} />
-                        <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-bold text-[#1E293B]">{member.name}</span>
+                      {todayTrip?.participants?.includes(member.uid) && (
+                        <div className="bg-blue-500 text-white p-1 rounded-full"><CheckCircle2 size={14} /></div>
+                      )}
                     </div>
-                    {todayTrip?.participants?.includes(member.uid) && (
-                      <div className="bg-blue-500 text-white p-1 rounded-full"><CheckCircle2 size={14} /></div>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-[#1E293B] hover:bg-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-900/20">
-              KAYDET VE KAPAT
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </AppLayout>
+              <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-[#1E293B] hover:bg-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-900/20">
+                KAYDET VE KAPAT
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+    </AppLayout >
   );
 }
