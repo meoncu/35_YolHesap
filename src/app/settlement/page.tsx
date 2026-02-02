@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getUsers, getAllTrips } from "@/lib/db-service";
+import { getUsers, getAllTrips, getAppSettings } from "@/lib/db-service";
 import { UserProfile, Trip } from "@/types";
-import { ArrowLeft, Save, Calculator, Trash2, Plus, Receipt, RefreshCcw, Calendar, Check, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Calculator, Trash2, Plus, Receipt, RefreshCcw, Calendar, Check, AlertCircle, Loader2 as LoaderIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,8 +62,12 @@ export default function SettlementPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const fetchedUsers = await getUsers();
+                const [fetchedUsers, appSettings] = await Promise.all([
+                    getUsers(),
+                    getAppSettings()
+                ]);
                 setUsers(fetchedUsers);
+                setDailyFee(appSettings.dailyFee);
 
                 // Fetch saved settlements
                 const q = query(collection(db, "settlements"), orderBy("date", "desc"));
@@ -190,6 +194,17 @@ export default function SettlementPage() {
             return;
         }
 
+        // Check if already exists to prevent duplicates
+        const alreadyExists = savedSettlements.some(s =>
+            s.title === title ||
+            (isAuto && s.type === 'auto' && format(new Date(s.date?.seconds * 1000 || s.date), "yyyy-MM") === selectedMonth)
+        );
+
+        if (alreadyExists) {
+            toast.error("Bu dönem için zaten kaydedilmiş bir hesaplama bulunuyor.");
+            return;
+        }
+
         setIsSaving(true);
         try {
             const settlementData: any = {
@@ -197,7 +212,7 @@ export default function SettlementPage() {
                 title,
                 date: serverTimestamp(),
                 dailyFee,
-                totalDays: isAuto ? autoTrips.length : manualTotalDays, // For auto, total trips in month
+                totalDays: isAuto ? autoTrips.length : manualTotalDays,
                 results: isAuto ? accruedStats : calculateManualResults()
             };
 
@@ -486,12 +501,87 @@ export default function SettlementPage() {
 
                 {/* SAVED LIST */}
                 <div className="mt-8 space-y-4">
-                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <Save size={20} className="text-[#143A5A]" />
-                        Kayıtlı Hesaplar
-                    </h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <Save size={20} className="text-[#143A5A]" />
+                            Hesap Geçmişi & Taslaklar
+                        </h2>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase bg-gray-100 px-2 py-1 rounded-md">
+                            {savedSettlements.length} Kayıtlı
+                        </div>
+                    </div>
+
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <AnimatePresence>
+                        <AnimatePresence mode="popLayout">
+                            {/* LIVE DRAFT CARD - Sharp check for duplicates */}
+                            {(() => {
+                                const currentTitle = activeTab === 'auto'
+                                    ? `${format(parseISO(selectedMonth + "-01"), "MMMM yyyy", { locale: tr })} Otomatik Hesap`
+                                    : manualTitle;
+
+                                const isAlreadySaved = savedSettlements.some(s =>
+                                    s.title === currentTitle ||
+                                    (s.type === 'auto' && activeTab === 'auto' && format(new Date(s.date?.seconds * 1000 || s.date), "yyyy-MM") === selectedMonth)
+                                );
+
+                                if (isAlreadySaved) return null;
+
+                                return (
+                                    <motion.div
+                                        key="live-draft"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="relative group h-full"
+                                    >
+                                        <div className="absolute -top-2 -right-2 z-10">
+                                            <span className="bg-[#143A5A] text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg border-2 border-white uppercase tracking-tighter">
+                                                CANLI TASLAK
+                                            </span>
+                                        </div>
+                                        <Card className="border-2 border-dashed border-blue-200 bg-blue-50/20 shadow-none hover:border-blue-400 transition-all overflow-hidden flex flex-col h-full">
+                                            <div className="p-4 flex items-start justify-between flex-1">
+                                                <div className="flex gap-3">
+                                                    <div className="p-2 rounded-xl bg-blue-500 text-white shadow-sm h-fit anim-pulse">
+                                                        {activeTab === 'auto' ? <RefreshCcw size={16} /> : <Calculator size={16} />}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-black text-sm text-[#143A5A] leading-tight">
+                                                            {activeTab === 'auto' ? `${format(parseISO(selectedMonth + "-01"), "MMMM yyyy", { locale: tr })}` : manualTitle}
+                                                        </h3>
+                                                        <p className="text-[10px] text-blue-400 mt-1 uppercase font-bold">
+                                                            {activeTab === 'auto' ? 'Otomatik' : 'Manuel'} • Henüz Kaydedilmedi
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleSave}
+                                                    disabled={isSaving || (activeTab === 'manual' && !isManualValid)}
+                                                    className="border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl h-8 px-3 font-bold text-[10px]"
+                                                >
+                                                    {isSaving ? <LoaderIcon className="animate-spin" size={14} /> : <><Save size={14} className="mr-1" /> KAYDET</>}
+                                                </Button>
+                                            </div>
+                                            <div className="bg-blue-50/50 px-4 py-3 border-t border-blue-100/50 flex gap-2 overflow-x-auto no-scrollbar">
+                                                {results.slice(0, 3).map((r, i) => (
+                                                    <div key={i} className="flex flex-col min-w-[60px]">
+                                                        <span className="text-[9px] font-bold text-blue-800/60 truncate uppercase">{r.userName.split(' ')[0]}</span>
+                                                        <span className={cn("text-[11px] font-black", r.net >= 0 ? "text-emerald-600" : "text-rose-500")}>
+                                                            {r.net > 0 ? '+' : ''}{r.net}₺
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                <div className="ml-auto">
+                                                    <ArrowRight size={14} className="text-blue-300" />
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </motion.div>
+                                );
+                            })()}
+
+                            {/* SAVED CARDS */}
                             {savedSettlements.map((s) => (
                                 <motion.div
                                     key={s.id}
@@ -500,16 +590,16 @@ export default function SettlementPage() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
                                 >
-                                    <Card className="border-none shadow-sm hover:shadow-md transition-all group overflow-hidden">
-                                        <div className="p-4 bg-white flex items-start justify-between">
+                                    <Card className="border-none shadow-sm hover:shadow-md transition-all group overflow-hidden border border-gray-100 flex flex-col h-full">
+                                        <div className="p-4 bg-white flex items-start justify-between flex-1">
                                             <div className="flex gap-3">
-                                                <div className={cn("p-2 rounded-xl h-fit", s.type === 'auto' ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600")}>
+                                                <div className={cn("p-2 rounded-xl h-fit shadow-sm", s.type === 'auto' ? "bg-indigo-50 text-indigo-600" : "bg-amber-50 text-amber-600")}>
                                                     {s.type === 'auto' ? <RefreshCcw size={16} /> : <Calculator size={16} />}
                                                 </div>
                                                 <div>
                                                     <h3 className="font-bold text-sm text-gray-900 leading-tight">{s.title}</h3>
                                                     <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">
-                                                        {s.type === 'auto' ? 'Otomatik Hesap' : 'Manuel Hesap'} • {new Date(s.date?.seconds * 1000 || s.date).toLocaleDateString()}
+                                                        {s.type === 'auto' ? 'Otomatik' : 'Manuel'} • {new Date(s.date?.seconds * 1000 || s.date).toLocaleDateString('tr-TR')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -520,12 +610,12 @@ export default function SettlementPage() {
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar">
+                                        <div className="bg-gray-50/80 px-4 py-3 border-t border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
                                             {s.results.slice(0, 3).map((r, i) => (
                                                 <div key={i} className="flex flex-col min-w-[60px]">
-                                                    <span className="text-[9px] font-bold text-gray-400 truncate">{r.userName.split(' ')[0]}</span>
+                                                    <span className="text-[9px] font-bold text-gray-400 truncate uppercase">{r.userName.split(' ')[0]}</span>
                                                     <span className={cn("text-[10px] font-black", r.net >= 0 ? "text-green-600" : "text-red-500")}>
-                                                        {r.net > 0 ? '+' : ''}{r.net}
+                                                        {r.net > 0 ? '+' : ''}{r.net}₺
                                                     </span>
                                                 </div>
                                             ))}

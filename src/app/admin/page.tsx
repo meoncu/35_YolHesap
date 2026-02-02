@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
-import { getUsers, updateUserProfile, deleteUserProfile } from "@/lib/db-service";
+import { getUsers, updateUserProfile, deleteUserProfile, getAppSettings, updateAppSettings, AppSettings } from "@/lib/db-service";
 import { UserProfile, UserRole } from "@/types";
 import { toast } from "sonner";
 import {
@@ -18,7 +18,8 @@ import {
     MoreVertical,
     CheckCircle2,
     AlertCircle,
-    Info
+    Info,
+    Calculator
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,13 +57,17 @@ const defaultCenter = {
 
 export default function AdminPage() {
     const { user: currentUser } = useAuth();
-    const [activeTab, setActiveTab] = useState<"users" | "routes">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "routes" | "settings">("users");
 
     // Route Tracking State
     const [routeDate, setRouteDate] = useState(new Date());
     const [selectedDriver, setSelectedDriver] = useState<string>("");
     const [routePath, setRoutePath] = useState<any[]>([]);
     const [mapLoading, setMapLoading] = useState(false);
+
+    // Settings State
+    const [settings, setSettings] = useState<AppSettings>({ dailyFee: 100 });
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -96,7 +101,25 @@ export default function AdminPage() {
 
     useEffect(() => {
         fetchUsers();
+        fetchSettings();
     }, []);
+
+    const fetchSettings = async () => {
+        const data = await getAppSettings();
+        setSettings(data);
+    };
+
+    const handleSaveSettings = async () => {
+        setIsSavingSettings(true);
+        try {
+            await updateAppSettings(settings);
+            toast.success("Ayarlar kaydedildi.");
+        } catch (error) {
+            toast.error("Ayarlar kaydedilirken hata oluştu.");
+        } finally {
+            setIsSavingSettings(false);
+        }
+    };
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -222,6 +245,12 @@ export default function AdminPage() {
                     >
                         Güzergah Takibi
                     </button>
+                    <button
+                        onClick={() => setActiveTab("settings")}
+                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "settings" ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}
+                    >
+                        Sistem Ayarları
+                    </button>
                 </div>
 
                 {activeTab === "users" ? (
@@ -325,7 +354,7 @@ export default function AdminPage() {
                             )}
                         </div>
                     </>
-                ) : (
+                ) : activeTab === "routes" ? (
                     // ROUTES TAB CONTENT
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
@@ -401,6 +430,66 @@ export default function AdminPage() {
                             <div className="flex gap-2 text-xs text-gray-500 font-medium px-2">
                                 <Info size={14} />
                                 <span>GPS verileri anlık olarak sürücünün cihazından alınır. Kesintisiz takip için sürücünün GPS izni vermiş olması ve uygulamanın açık olması gerekir.</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    // SETTINGS TAB CONTENT
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl">
+                        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-blue-900/5 space-y-8">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                    <Shield size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-gray-900">Genel Sistem Ayarları</h3>
+                                    <p className="text-sm text-gray-500 font-medium leading-none mt-1">Uygulama genelindeki hesaplamaları etkiler.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
+                                            <Calculator size={14} className="text-blue-500" />
+                                            Günlük Sabit Ücret (₺)
+                                        </label>
+                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">VARSAYILAN: 100 ₺</span>
+                                    </div>
+                                    <div className="relative group">
+                                        <Input
+                                            type="number"
+                                            value={settings.dailyFee}
+                                            onChange={(e) => setSettings({ ...settings, dailyFee: parseFloat(e.target.value) || 0 })}
+                                            className="h-16 rounded-2xl border-gray-200 bg-gray-50/50 text-2xl font-black px-6 focus:bg-white transition-all focus:ring-4 focus:ring-blue-100 placeholder:text-gray-300"
+                                            placeholder="100"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 font-black text-xl italic group-focus-within:text-blue-500">TL</div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 font-medium pl-1 leading-relaxed">
+                                        Hesap makinelerinde ve ana sayfadaki borç/alacak tablolarında kullanılan temel birim fiyattır. Yarım gidişler bu değerin yarısı olarak hesaplanır.
+                                    </p>
+                                </div>
+
+                                <div className="pt-4">
+                                    <Button
+                                        onClick={handleSaveSettings}
+                                        disabled={isSavingSettings}
+                                        className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-sm shadow-xl shadow-blue-200 disabled:opacity-50 group"
+                                    >
+                                        {isSavingSettings ? (
+                                            <Loader2 className="animate-spin" />
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <Check size={20} strokeWidth={3} />
+                                                AYARLARI KAYDET
+                                            </div>
+                                        )}
+                                    </Button>
+                                    <p className="text-[10px] text-center text-gray-400 mt-4 font-bold uppercase tracking-widest italic leading-none">
+                                        * DEĞİŞİKLİKLER TÜM KULLANICILAR İÇİN ANINDA GEÇERLİ OLUR.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>

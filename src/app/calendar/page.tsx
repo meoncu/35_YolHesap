@@ -28,7 +28,7 @@ import Link from "next/link";
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { tr } from "date-fns/locale";
 import { db } from "@/lib/firebase";
-import { getUsers, saveTrip, getAllTrips } from "@/lib/db-service";
+import { getUsers, saveTrip, getAllTrips, getAppSettings } from "@/lib/db-service";
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile, Trip } from "@/types";
 import { toast } from "sonner";
@@ -51,20 +51,24 @@ export default function CalendarPage() {
     const [dailyFee, setDailyFee] = useState(100);
     const [tripType, setTripType] = useState<'morning' | 'evening' | 'full'>('full');
 
-    // Initial fetch for members
+    // Initial fetch for members and settings
     useEffect(() => {
-        const fetchMembers = async () => {
+        const fetchData = async () => {
             try {
-                const fetchedUsers = await getUsers();
+                const [fetchedUsers, trips, settings] = await Promise.all([
+                    getUsers(),
+                    getAllTrips(),
+                    getAppSettings()
+                ]);
                 setMembers(fetchedUsers);
-                const trips = await getAllTrips();
                 setAllTrips(trips);
+                setDailyFee(settings.dailyFee);
             } catch (error) {
                 console.error("Error fetching data:", error);
                 toast.error("Veriler yüklenirken hata oluştu.");
             }
         };
-        fetchMembers();
+        fetchData();
     }, []);
 
     // Fetch trip data when date changes

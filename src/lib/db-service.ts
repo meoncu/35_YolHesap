@@ -141,3 +141,39 @@ export const calculateAndSaveTripDistance = async (tripId: string, date: string,
         return 0;
     }
 };
+
+// Global Settings
+export interface AppSettings {
+    dailyFee: number;
+    updatedAt?: any;
+}
+
+const DEFAULT_SETTINGS: AppSettings = {
+    dailyFee: 100
+};
+
+export const getAppSettings = async (): Promise<AppSettings> => {
+    try {
+        const settingsRef = doc(db, "settings", "global");
+        const settingsSnap = await getDoc(settingsRef);
+
+        if (settingsSnap.exists()) {
+            return { ...DEFAULT_SETTINGS, ...settingsSnap.data() } as AppSettings;
+        }
+
+        // Initialize if not exists
+        await setDoc(settingsRef, DEFAULT_SETTINGS);
+        return DEFAULT_SETTINGS;
+    } catch (error) {
+        console.error("Error fetching settings:", error);
+        return DEFAULT_SETTINGS;
+    }
+};
+
+export const updateAppSettings = async (data: Partial<AppSettings>) => {
+    const settingsRef = doc(db, "settings", "global");
+    await setDoc(settingsRef, {
+        ...data,
+        updatedAt: serverTimestamp()
+    }, { merge: true });
+};
