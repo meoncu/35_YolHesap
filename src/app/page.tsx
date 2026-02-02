@@ -38,7 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { getUsers, getAllTrips, saveTrip, saveLocation, getAppSettings, AppSettings } from "@/lib/db-service";
+import { getUsers, getAllTrips, saveTrip, saveLocation, getAppSettings, AppSettings, getApprovedUsers } from "@/lib/db-service";
 import { getFuelPrices, FuelPriceData } from "@/lib/fuel-service";
 import { UserProfile, Trip } from "@/types";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addDays } from "date-fns";
@@ -141,7 +141,7 @@ export default function Dashboard() {
       setLoading(true);
       try {
         const [fetchedUsers, trips, prices, appSettings] = await Promise.all([
-          getUsers(),
+          getApprovedUsers(),
           getAllTrips(),
           getFuelPrices(),
           getAppSettings()
@@ -231,7 +231,7 @@ export default function Dashboard() {
       await saveTrip(updatedTrip);
       toast.success("Yolculuk güncellendi.");
       if (updates.driverUid) setIsDriverDialogOpen(false);
-      const [updatedTrips, updatedUsers] = await Promise.all([getAllTrips(), getUsers()]);
+      const [updatedTrips, updatedUsers] = await Promise.all([getAllTrips(), getApprovedUsers()]);
       setAllTrips(updatedTrips);
       setMembers(updatedUsers);
     } catch (error) {

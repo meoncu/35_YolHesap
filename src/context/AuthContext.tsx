@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             photoURL: user.photoURL,
                             role: isAdmin ? "admin" : "user",
                             phone: "",
+                            isApproved: isAdmin ? true : false, // Admin automatically approved
                             createdAt: serverTimestamp(),
                         };
                         await setDoc(doc(db, "users", user.uid), newProfile);

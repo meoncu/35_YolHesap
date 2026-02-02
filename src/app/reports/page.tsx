@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getAllTrips, getUsers } from "@/lib/db-service";
+import { getAllTrips, getUsers, getApprovedUsers } from "@/lib/db-service";
 import { getFuelPrices, getMonthFuelHistory, FuelPriceData } from "@/lib/fuel-service";
 import { Trip, UserProfile } from "@/types";
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
@@ -47,7 +47,7 @@ export default function ReportsPage() {
                 const monthStr = format(selectedMonth, "yyyy-MM");
                 const [allTrips, allUsers, prices, history] = await Promise.all([
                     getAllTrips(),
-                    getUsers(),
+                    getApprovedUsers(),
                     getFuelPrices(),
                     getMonthFuelHistory(monthStr)
                 ]);

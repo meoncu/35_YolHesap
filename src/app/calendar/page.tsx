@@ -28,7 +28,7 @@ import Link from "next/link";
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { tr } from "date-fns/locale";
 import { db } from "@/lib/firebase";
-import { getUsers, saveTrip, getAllTrips, getAppSettings } from "@/lib/db-service";
+import { getUsers, saveTrip, getAllTrips, getAppSettings, getApprovedUsers } from "@/lib/db-service";
 import { doc, getDoc } from "firebase/firestore";
 import { UserProfile, Trip } from "@/types";
 import { toast } from "sonner";
@@ -56,7 +56,7 @@ export default function CalendarPage() {
         const fetchData = async () => {
             try {
                 const [fetchedUsers, trips, settings] = await Promise.all([
-                    getUsers(),
+                    getApprovedUsers(),
                     getAllTrips(),
                     getAppSettings()
                 ]);

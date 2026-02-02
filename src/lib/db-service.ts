@@ -22,6 +22,12 @@ export const getUsers = async (): Promise<UserProfile[]> => {
     return querySnapshot.docs.map(doc => ({ ...doc.data() as UserProfile }));
 };
 
+export const getApprovedUsers = async (): Promise<UserProfile[]> => {
+    const q = query(collection(db, "users"), where("isApproved", "==", true));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ ...doc.data() as UserProfile }));
+};
+
 export const updateUserProfile = async (uid: string, data: Partial<UserProfile>) => {
     const userRef = doc(db, "users", uid);
     await updateDoc(userRef, {

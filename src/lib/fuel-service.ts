@@ -26,15 +26,31 @@ export const getFuelPrices = async (targetDate: string = format(new Date(), "yyy
         }
 
         // 2. Not in Firestore, fetch from API
-        // Note: For historical dates, this API might only return CURRENT.
-        // In a production app, a daily cron job would populate this.
         const response = await axios.get('https://hasanadiguzel.com.tr/api/akaryakit/sehir=ANKARA');
-        const data = response.data.data[0];
+
+        // The API returns an object where keys are district IDs
+        const allData = response.data.data;
+        const districts = Object.values(allData) as any[];
+
+        // Helper to parse Turkish currency format (e.g. "52,22")
+        const parseTrPrice = (val: string) => {
+            if (!val || val === "-" || val === "") return 0;
+            return parseFloat(val.replace(',', '.')) || 0;
+        };
+
+        // Try to find a district that has as much data as possible
+        let selectedDistrict = districts[0];
+        for (const d of districts) {
+            if (parseTrPrice(d["Otogaz_TL/lt"]) > 0) {
+                selectedDistrict = d;
+                break;
+            }
+        }
 
         const prices: FuelPriceData = {
-            benzin: parseFloat(data.benzin) || 40.0,
-            motorin: parseFloat(data.motorin) || 42.0,
-            lpg: parseFloat(data.lpg) || 20.0,
+            benzin: parseTrPrice(selectedDistrict["Kursunsuz_95(Excellium95)_TL/lt"]) || 40.0,
+            motorin: parseTrPrice(selectedDistrict["Motorin(Eurodiesel)_TL/lt"]) || 42.0,
+            lpg: parseTrPrice(selectedDistrict["Otogaz_TL/lt"]) || 20.0,
             date: targetDate,
             lastUpdated: new Date().toISOString()
         };

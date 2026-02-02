@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { getUsers, updateUserProfile } from "@/lib/db-service";
+import { getUsers, updateUserProfile, getApprovedUsers } from "@/lib/db-service";
 
 export default function GroupPage() {
     const { profile, user } = useAuth();
@@ -32,7 +32,7 @@ export default function GroupPage() {
         const fetchGroupData = async () => {
             setLoading(true);
             try {
-                const fetchedUsers = await getUsers();
+                const fetchedUsers = await getApprovedUsers();
                 setMembers(fetchedUsers);
 
                 // For now, setting a default group info since we haven't implemented group creation UI

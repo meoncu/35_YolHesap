@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getUsers, getAllTrips, getAppSettings } from "@/lib/db-service";
+import { getUsers, getAllTrips, getAppSettings, getApprovedUsers } from "@/lib/db-service";
 import { UserProfile, Trip } from "@/types";
 import { ArrowLeft, Save, Calculator, Trash2, Plus, Receipt, RefreshCcw, Calendar, Check, AlertCircle, Loader2 as LoaderIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -63,7 +63,7 @@ export default function SettlementPage() {
         const fetchData = async () => {
             try {
                 const [fetchedUsers, appSettings] = await Promise.all([
-                    getUsers(),
+                    getApprovedUsers(),
                     getAppSettings()
                 ]);
                 setUsers(fetchedUsers);
