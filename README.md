@@ -20,6 +20,19 @@ YolPay, arkadaş gruplarının işe gidiş-geliş araç paylaşımını, günlü
    npm run dev
    ```
 
+## Dağıtım (Deployment)
+
+Projeyi Vercel'e yüklerken, `.env.local` dosyanızdaki tüm **NEXT_PUBLIC_** ile başlayan ortam değişkenlerini Vercel proje ayarlarında (**Settings > Environment Variables**) tanımlamanız gerekmektedir. Aksi takdirde build hatası alırsınız.
+
+Gerekli Değişkenler:
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+
 ## Özellikler
 - **Google Auth:** Tek tıkla güvenli giriş.
 - **Dinamik Takvim:** Günlük şoför ve katılımcı yönetimi.
