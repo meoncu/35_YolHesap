@@ -76,6 +76,12 @@ export default function MapPage() {
         ETIMESGUT: { lat: 39.9475578, lng: 32.6642409 }
     };
 
+    // Waypoints Points
+    const POINTS = {
+        ANKARA_BLVD: { location: { lat: 39.9385, lng: 32.7480 }, stopover: false }, // Ankara Blv.
+        SABANCI_BLVD: { location: { lat: 39.9085, lng: 32.7750 }, stopover: false }  // Sabancı Blv.
+    };
+
     // Determine Route Direction based on Time (Switch at 17:30)
     const routeConfig = useMemo(() => {
         const now = new Date();
@@ -95,7 +101,8 @@ export default function MapPage() {
                     : "Söğütözü'nden (Tarım Kredi) Etimesgut'a dönüş rotası. (Konum bekleniyor...)",
                 origin: userLocation || LOCATIONS.TARIM_KREDI,
                 destination: COORDS.ETIMESGUT,
-                departureTime: now
+                departureTime: now,
+                waypoints: [POINTS.SABANCI_BLVD, POINTS.ANKARA_BLVD] // Reverse for return
             };
         } else {
             return {
@@ -106,16 +113,11 @@ export default function MapPage() {
                     : "Etimesgut'tan Söğütözü'ne (Tarım Kredi GM) işe gidiş rotası. (Konum bekleniyor...)",
                 origin: userLocation || LOCATIONS.ETIMESGUT,
                 destination: COORDS.TARIM_KREDI,
-                departureTime: now
+                departureTime: now,
+                waypoints: [POINTS.ANKARA_BLVD, POINTS.SABANCI_BLVD]
             };
         }
     }, [userLocation]);
-
-    // Waypoints to force specific route (Ankara Blvd -> Sabancı Blvd connection)
-    const WAYPOINTS = [
-        { location: { lat: 39.9385, lng: 32.7480 }, stopover: false }, // Ankara Blv. (AOÇ civarı)
-        { location: { lat: 39.9085, lng: 32.7750 }, stopover: false }  // Sabancı Blv. (Söğütözü girişi)
-    ];
 
     // Check Commute Time & Geolocation
     useEffect(() => {
@@ -234,7 +236,7 @@ export default function MapPage() {
                                 options={{
                                     destination: routeConfig.destination,
                                     origin: routeConfig.origin,
-                                    waypoints: WAYPOINTS,
+                                    waypoints: routeConfig.waypoints,
                                     travelMode: google.maps.TravelMode.DRIVING,
                                     provideRouteAlternatives: true,
                                     drivingOptions: {

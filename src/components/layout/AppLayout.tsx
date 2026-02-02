@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Header } from "./Header";
-import { BottomNav } from "./BottomNav";
+
 import { useAuth } from "@/context/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 
@@ -27,7 +27,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                     </div>
                 </AuthGuard>
             </main>
-            <BottomNav />
+
         </div>
     );
 };

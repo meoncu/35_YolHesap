@@ -686,20 +686,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bottom Summary Bar */}
-        <div className={cn("rounded-[2.5rem] border shadow-xl p-6 flex flex-wrap items-center justify-around gap-8 text-center mt-4", isDarkMode ? "bg-slate-800 border-slate-700 shadow-slate-900/20" : "bg-white border-gray-100 shadow-blue-900/5")}>
-          <div>
-            <p className={cn("text-2xl font-black", isDarkMode ? "text-white" : "text-[#1E293B]")}>₺{stats.monthlyCredit.toLocaleString()}</p>
-          </div>
-          <div className={cn("h-10 w-px md:block hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")} />
-          <div>
-            <p className={cn("text-2xl font-black", isDarkMode ? "text-white" : "text-[#1E293B]")}>124kg</p>
-          </div>
-          <div className={cn("h-10 w-px md:block hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")} />
-          <div>
-            <p className={cn("text-2xl font-black", isDarkMode ? "text-white" : "text-[#1E293B]")}>{stats.totalTrips} Sefer</p>
-          </div>
-        </div>
+
       </div>
 
       <Dialog open={isDriverDialogOpen} onOpenChange={setIsDriverDialogOpen}>
