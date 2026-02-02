@@ -111,6 +111,12 @@ export default function MapPage() {
         }
     }, [userLocation]);
 
+    // Waypoints to force specific route (Ankara Blvd -> Sabancı Blvd connection)
+    const WAYPOINTS = [
+        { location: { lat: 39.9385, lng: 32.7480 }, stopover: false }, // Ankara Blv. (AOÇ civarı)
+        { location: { lat: 39.9085, lng: 32.7750 }, stopover: false }  // Sabancı Blv. (Söğütözü girişi)
+    ];
+
     // Check Commute Time & Geolocation
     useEffect(() => {
         // 1. Check Time
@@ -228,10 +234,7 @@ export default function MapPage() {
                                 options={{
                                     destination: routeConfig.destination,
                                     origin: routeConfig.origin,
-                                    waypoints: [
-                                        { location: "Sabancı Blv., Ankara", stopover: false },
-                                        { location: "Ankara Blv., Ankara", stopover: false }
-                                    ],
+                                    waypoints: WAYPOINTS,
                                     travelMode: google.maps.TravelMode.DRIVING,
                                     provideRouteAlternatives: true,
                                     drivingOptions: {
