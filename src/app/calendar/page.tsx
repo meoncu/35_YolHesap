@@ -253,7 +253,7 @@ export default function CalendarPage() {
                             {date && eachDayOfInterval({
                                 start: startOfMonth(date),
                                 end: endOfMonth(date)
-                            }).reverse().map((day) => {
+                            }).map((day) => {
                                 const dayStr = format(day, "yyyy-MM-dd");
                                 const trip = allTrips.find(t => t.date === dayStr);
                                 const tripDriver = members.find(m => m.uid === trip?.driverUid);
