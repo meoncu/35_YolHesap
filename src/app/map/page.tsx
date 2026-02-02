@@ -57,7 +57,7 @@ export default function MapPage() {
     }
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
-    const [showTraffic, setShowTraffic] = useState(false);
+    const [showTraffic, setShowTraffic] = useState(true);
     const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
     const [routeStats, setRouteStats] = useState<{ distance: string, duration: string } | null>(null);
 
