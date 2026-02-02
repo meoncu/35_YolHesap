@@ -642,6 +642,10 @@ export default function Dashboard() {
 
       <Dialog open={isSeatingPlanOpen} onOpenChange={setIsSeatingPlanOpen}>
         <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-0 border-none shadow-2xl bg-transparent">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Araç Oturma Planı</DialogTitle>
+            <DialogDescription>Bugünkü yolculuk için oturma düzeni</DialogDescription>
+          </DialogHeader>
           <div className="bg-white p-2 rounded-[2.5rem]">
             <SeatingPlan
               driver={members.find(m => m.uid === todayTrip?.driverUid)}
