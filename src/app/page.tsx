@@ -272,6 +272,36 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Middle Section: Clock and Profile Actions */}
+            <div className="hidden md:flex flex-col items-center gap-2 mb-1">
+              <div className="flex items-center gap-3 p-2 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-white/50 dark:border-slate-700/50 shadow-sm">
+                <div className="flex items-center gap-2 pl-2 pr-1 border-r border-gray-200 dark:border-slate-700">
+                  <span className="text-sm font-black text-blue-600 dark:text-blue-400 font-mono tracking-wider">{format(currentTime, "HH:mm:ss")}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button onClick={toggleDarkMode} variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white dark:hover:bg-slate-700 transition-all">
+                    <Moon size={16} className={isDarkMode ? "text-yellow-400" : "text-gray-400"} fill="currentColor" />
+                  </Button>
+                  {user && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 rounded-full p-0 border-2 border-white dark:border-slate-600 shadow-sm overflow-hidden">
+                          <Avatar className="h-full w-full">
+                            <AvatarImage src={user.photoURL || ""} />
+                            <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56 rounded-2xl" align="center">
+                        <DropdownMenuItem asChild><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Yönetici Paneli</Link></DropdownMenuItem>
+                        <DropdownMenuItem onClick={logout} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /> Çıkış Yap</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {fuelPrices && (
               <div className={cn("flex items-center gap-4 p-4 rounded-[2rem] border shadow-lg shadow-blue-900/5", isDarkMode ? "bg-slate-800/80 border-slate-700" : "bg-white border-gray-100")}>
                 <div className="flex flex-col pr-4 border-r border-gray-100/10">
@@ -311,30 +341,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button onClick={toggleDarkMode} variant="ghost" size="icon" className="h-9 w-9 rounded-full border bg-white dark:bg-slate-800">
-                <Moon size={18} className={isDarkMode ? "text-yellow-400" : "text-gray-400"} fill="currentColor" />
-              </Button>
-              <span className="text-sm font-black text-blue-600">{format(currentTime, "HH:mm:ss")}</span>
-            </div>
-            {user && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-10 w-10 rounded-full border-2 border-white shadow-sm overflow-hidden">
-                    <Avatar className="h-full w-full">
-                      <AvatarImage src={user.photoURL || ""} />
-                      <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 rounded-2xl" align="end">
-                  <DropdownMenuItem asChild><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Yönetici Paneli</Link></DropdownMenuItem>
-                  <DropdownMenuItem onClick={logout} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /> Çıkış Yap</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+
 
           {/* Weather Forecast */}
           <div className={cn("w-full backdrop-blur-md rounded-2xl border p-3 overflow-x-auto", isDarkMode ? "bg-slate-800/80 border-slate-700" : "bg-white/60 border-white/50 shadow-sm")}>
