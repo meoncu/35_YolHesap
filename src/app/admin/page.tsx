@@ -393,19 +393,20 @@ export default function AdminPage() {
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle>Kullanıcıyı Düzenle</DialogTitle>
+                        <DialogTitle>Kullanıcı Bilgilerini Düzenle</DialogTitle>
                         <DialogDescription>
-                            Kullanıcı bilgilerini güncelleyin.
+                            Kullanıcının site genelinde görünen ismini buradan değiştirebilirsiniz.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">İsim Soyisim</label>
+                            <label className="text-sm font-medium text-gray-700">Site İçi Görünen İsim</label>
                             <Input
                                 value={editForm.name}
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                                 placeholder="Ad Soyad"
                             />
+                            <p className="text-[10px] text-gray-500">Bu isim, ana sayfa ve araç planında görünecektir.</p>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Profil Fotoğrafı URL</label>
