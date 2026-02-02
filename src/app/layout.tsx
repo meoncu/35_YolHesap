@@ -10,8 +10,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "YolPay - Arkadaş Grubu Yol Paylaşımı",
+  title: "YolTakip - Yolculuk ve Ödeme Takibi",
   description: "Arkadaş gruplarının işe gidiş-geliş araç paylaşımını ve ödeme hesaplarını takip ettiği uygulama.",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
