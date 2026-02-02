@@ -72,8 +72,8 @@ export default function MapPage() {
     };
 
     const COORDS = {
-        TARIM_KREDI: { lat: 39.917719, lng: 32.789913 },
-        ETIMESGUT: { lat: 39.951298, lng: 32.649365 }
+        TARIM_KREDI: { lat: 39.9168615, lng: 32.7900571 },
+        ETIMESGUT: { lat: 39.9475578, lng: 32.6642409 }
     };
 
     // Determine Route Direction based on Time (Switch at 17:30)

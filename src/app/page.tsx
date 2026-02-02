@@ -664,13 +664,13 @@ export default function Dashboard() {
 
                     let destLat, destLng;
                     if (isEvening) {
-                      // To Etimesgut
-                      destLat = 39.951298;
-                      destLng = 32.649365;
+                      // To Etimesgut (Precise)
+                      destLat = 39.9475578;
+                      destLng = 32.6642409;
                     } else {
-                      // To Tarım Kredi (Söğütözü)
-                      destLat = 39.917719;
-                      destLng = 32.789913;
+                      // To Tarım Kredi (Precise)
+                      destLat = 39.9168615;
+                      destLng = 32.7900571;
                     }
 
                     // Open Google Maps Navigation
