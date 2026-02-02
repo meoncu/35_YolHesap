@@ -16,16 +16,34 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const AVATARS = [
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+    // LORELEI - Professional/Adult Style
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Aidan",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Sawyer",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Lillian",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Preston",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Jude",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Willow",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Avery",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Elias",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Ines",
+    "https://api.dicebear.com/7.x/lorelei/svg?seed=Jace",
+    // AVATAAARS - Mature Selections
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=Karlo&mood=fearful",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Buddy",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=Caleb",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Dusty",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=Eden",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Faith",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Gracie",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=Harley",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=Irina",
+    // NOTIONISTS - Modern/Minimalist Style
+    "https://api.dicebear.com/7.x/notionists/svg?seed=Felix",
+    "https://api.dicebear.com/7.x/notionists/svg?seed=Aneka",
+    "https://api.dicebear.com/7.x/notionists/svg?seed=Caleb",
+    "https://api.dicebear.com/7.x/notionists/svg?seed=Eden",
+    // MINIAVS - Clean & Professional
+    "https://api.dicebear.com/7.x/miniavs/svg?seed=Felix",
+    "https://api.dicebear.com/7.x/miniavs/svg?seed=Aneka",
+    "https://api.dicebear.com/7.x/miniavs/svg?seed=Caleb",
+    "https://api.dicebear.com/7.x/miniavs/svg?seed=Eden",
 ];
 
 export default function ProfilePage() {
