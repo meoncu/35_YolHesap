@@ -67,6 +67,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SeatingPlan } from "@/components/dashboard/SeatingPlan";
 
 export default function Dashboard() {
   const { profile, user, logout } = useAuth();
@@ -523,67 +524,39 @@ export default function Dashboard() {
 
 
 
-        {/* Today's Trip Summary Card */}
+        {/* Today's Trip Seating Plan */}
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><TrendingUp size={16} strokeWidth={3} /></div>
-            <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Bugünün Yolculuğu</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><Car size={16} strokeWidth={3} /></div>
+              <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Araç Yerleşimi</h2>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setIsDriverDialogOpen(true)} className="h-8 px-3 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-500 border border-gray-100 font-bold text-xs uppercase tracking-wider">
+              Düzenle
+            </Button>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-xl shadow-blue-900/5 p-2">
+          <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-xl shadow-blue-900/5 p-2 overflow-hidden">
             {todayTrip ? (
-              <div className="flex flex-col md:flex-row md:items-center gap-4 p-4">
-                {/* Date Part */}
-                <div className="flex items-center gap-3 min-w-[140px]">
-                  <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black bg-blue-600 text-white shadow-md shadow-blue-200">
-                    <span className="text-[10px] uppercase opacity-80 leading-none mb-0.5">{format(new Date(), "EEE", { locale: tr })}</span>
-                    <span className="text-xl leading-none">{format(new Date(), "d")}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{format(new Date(), "MMMM", { locale: tr })}</span>
-                    <span className="text-xs font-black text-[#1E293B] leading-none">BUGÜN</span>
+              <div className="p-2">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-blue-50/50 rounded-full">
+                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{format(new Date(), "d MMMM", { locale: tr })}</span>
                   </div>
                 </div>
 
-                {/* Trip Data Part */}
-                <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Driver */}
-                    <div className="flex items-center gap-3 bg-amber-50 p-3 rounded-2xl border border-amber-100/50">
-                      <div className="bg-amber-100 p-2 rounded-xl text-amber-600"><Car size={18} /></div>
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-amber-700/50 uppercase tracking-widest">SÜRÜCÜ</span>
-                        <span className="text-sm font-black text-amber-900 tracking-tight leading-none">
-                          {members.find(m => m.uid === todayTrip.driverUid)?.name || "Bilinmiyor"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Participants */}
-                    <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-2xl border border-blue-100/50">
-                      <div className="bg-blue-100 p-2 rounded-xl text-blue-600"><Users size={18} /></div>
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="text-[9px] font-black text-blue-700/50 uppercase tracking-widest">KATILIMCILAR</span>
-                        <span className="text-sm font-bold text-blue-900 truncate tracking-tight leading-none">
-                          {todayTrip.participants?.map((p: string) => members.find(m => m.uid === p)?.name).filter(Boolean).join(", ")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button variant="ghost" size="sm" onClick={() => setIsDriverDialogOpen(true)} className="h-10 w-10 md:w-auto p-0 md:px-6 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-100">
-                    <span className="hidden md:inline font-black text-[10px] uppercase tracking-widest">Düzenle</span>
-                    <span className="md:hidden"><ChevronRight size={18} /></span>
-                  </Button>
-                </div>
+                <SeatingPlan
+                  driver={members.find(m => m.uid === todayTrip.driverUid)}
+                  participants={todayTrip.participants?.map((id: string) => members.find(m => m.uid === id)).filter(Boolean) as UserProfile[] || []}
+                />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 gap-3 opacity-60">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                  <Info size={24} />
+              <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-60">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                  <Car size={32} />
                 </div>
-                <p className="text-sm font-bold text-gray-500">Bugün için planlanmış yolculuk yok.</p>
-                <Button onClick={() => setIsDriverDialogOpen(true)} variant="outline" size="sm" className="mt-2">Planla</Button>
+                <p className="text-sm font-bold text-gray-500">Bugün için araç planı yok.</p>
+                <Button onClick={() => setIsDriverDialogOpen(true)} variant="outline" size="sm" className="mt-2">Plan Oluştur</Button>
               </div>
             )}
           </div>
