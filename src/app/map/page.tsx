@@ -71,6 +71,11 @@ export default function MapPage() {
         TARIM_KREDI: "Tarım Kredi Kooperatifleri Merkez Birliği, Söğütözü, Çankaya, Ankara"
     };
 
+    const COORDS = {
+        TARIM_KREDI: { lat: 39.917719, lng: 32.789913 },
+        ETIMESGUT: { lat: 39.951298, lng: 32.649365 }
+    };
+
     // Determine Route Direction based on Time (Switch at 17:30)
     const routeConfig = useMemo(() => {
         const now = new Date();
@@ -79,27 +84,32 @@ export default function MapPage() {
 
         // Check if it is evening (>= 17:30)
         const isEvening = currentHour > 17 || (currentHour === 17 && currentMinute >= 30);
+        const hasLocation = !!userLocation;
 
         if (isEvening) {
             return {
                 mode: "evening",
                 label: "Akşam Dönüş Rotası",
-                desc: "Söğütözü'nden (Tarım Kredi) Etimesgut'a dönüş rotası. İyi yolculuklar!",
-                origin: LOCATIONS.TARIM_KREDI,
-                destination: LOCATIONS.ETIMESGUT,
-                departureTime: now // Live traffic for now
+                desc: hasLocation
+                    ? "Konumunuzdan Etimesgut'a (39.951, 32.649) dönüş rotası."
+                    : "Söğütözü'nden (Tarım Kredi) Etimesgut'a dönüş rotası. (Konum bekleniyor...)",
+                origin: userLocation || LOCATIONS.TARIM_KREDI,
+                destination: COORDS.ETIMESGUT,
+                departureTime: now
             };
         } else {
             return {
                 mode: "morning",
                 label: "Sabah Gidiş Rotası",
-                desc: "Etimesgut'tan Söğütözü'ne (Tarım Kredi GM) işe gidiş rotası. En hızlı güzergah.",
-                origin: LOCATIONS.ETIMESGUT,
-                destination: LOCATIONS.TARIM_KREDI,
-                departureTime: now // Live traffic for now
+                desc: hasLocation
+                    ? "Konumunuzdan Tarım Kredi Söğütözü'ne (39.917, 32.789) gidiş rotası."
+                    : "Etimesgut'tan Söğütözü'ne (Tarım Kredi GM) işe gidiş rotası. (Konum bekleniyor...)",
+                origin: userLocation || LOCATIONS.ETIMESGUT,
+                destination: COORDS.TARIM_KREDI,
+                departureTime: now
             };
         }
-    }, []);
+    }, [userLocation]);
 
     // Check Commute Time & Geolocation
     useEffect(() => {
