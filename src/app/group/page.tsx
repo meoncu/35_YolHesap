@@ -6,20 +6,27 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Phone, UserPlus, Settings, MoreHorizontal, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Phone, UserPlus, Settings, MoreHorizontal, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { UserProfile, Group } from "@/types";
 
-import { getUsers } from "@/lib/db-service";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+import { getUsers, updateUserProfile } from "@/lib/db-service";
 
 export default function GroupPage() {
     const { profile, user } = useAuth();
     const [group, setGroup] = useState<Group | null>(null);
     const [members, setMembers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Edit Name State
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+    const [newName, setNewName] = useState("");
 
     useEffect(() => {
         const fetchGroupData = async () => {
@@ -45,6 +52,31 @@ export default function GroupPage() {
         fetchGroupData();
     }, []);
 
+    const openEditDialog = (member: UserProfile) => {
+        setEditingUser(member);
+        setNewName(member.name || "");
+        setIsEditDialogOpen(true);
+    };
+
+    const handleUpdateName = async () => {
+        if (!editingUser || !newName.trim()) return;
+
+        try {
+            await updateUserProfile(editingUser.uid, { name: newName });
+
+            // Update local state
+            setMembers(members.map(m =>
+                m.uid === editingUser.uid ? { ...m, name: newName } : m
+            ));
+
+            toast.success("Kullanıcı ismi güncellendi");
+            setIsEditDialogOpen(false);
+        } catch (error) {
+            console.error("Error updating name:", error);
+            toast.error("İsim güncellenirken bir hata oluştu");
+        }
+    };
+
     return (
         <AppLayout>
             <div className="space-y-6">
@@ -66,8 +98,6 @@ export default function GroupPage() {
                         </Button>
                     )}
                 </header>
-
-
 
                 {/* members List */}
                 <div className="space-y-3">
@@ -115,9 +145,19 @@ export default function GroupPage() {
                                                     </a>
                                                 )}
                                                 {profile?.role === 'admin' && (
-                                                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-gray-400">
-                                                        <MoreHorizontal size={18} />
-                                                    </Button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-gray-400">
+                                                                <MoreHorizontal size={18} />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => openEditDialog(member)}>
+                                                                <Settings className="mr-2 h-4 w-4" />
+                                                                <span>İsim Düzenle</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 )}
                                             </div>
                                         </CardContent>
@@ -139,6 +179,32 @@ export default function GroupPage() {
                     </div>
                 )}
             </div>
+
+            {/* Edit Name Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Üye İsmini Düzenle</DialogTitle>
+                        <DialogDescription>
+                            Bu kullanıcının site genelinde görünecek ismini değiştirebilirsiniz.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Görünen İsim</label>
+                            <Input
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                placeholder="İsim Soyisim"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">İptal</Button>
+                        <Button onClick={handleUpdateName} className="bg-blue-600 hover:bg-blue-700 rounded-xl">Kaydet</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
