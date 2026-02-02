@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
 import { getUsers, updateUserProfile, deleteUserProfile } from "@/lib/db-service";
-import { UserProfile } from "@/types";
+import { UserProfile, UserRole } from "@/types";
 import { toast } from "sonner";
 import {
     Shield,
@@ -76,7 +76,11 @@ export default function AdminPage() {
     // Edit State
     const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [editForm, setEditForm] = useState({ name: "", photoURL: "", role: "user" });
+    const [editForm, setEditForm] = useState<{
+        name: string;
+        photoURL: string;
+        role: UserRole;
+    }>({ name: "", photoURL: "", role: "user" });
 
     useEffect(() => {
         fetchUsers();
@@ -138,7 +142,7 @@ export default function AdminPage() {
                 role: editForm.role as any
             });
 
-            setUsers(users.map(u => u.uid === editingUser.uid ? { ...u, ...editForm } : u));
+            setUsers(users.map(u => u.uid === editingUser.uid ? { ...u, ...editForm, role: editForm.role as UserRole } : u));
             toast.success("Kullanıcı güncellendi.");
             setIsEditDialogOpen(false);
         } catch (error) {
@@ -415,7 +419,7 @@ export default function AdminPage() {
                             <select
                                 className="w-full flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={editForm.role}
-                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
                             >
                                 <option value="user">Kullanıcı</option>
                                 <option value="admin">Yönetici</option>
