@@ -13,6 +13,8 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Trip, UserProfile, Group } from "@/types";
+import { format } from "date-fns";
+import { calculateRouteDistance, getFuelPrices } from "./fuel-service";
 
 // User Services
 export const getUsers = async (): Promise<UserProfile[]> => {
@@ -34,6 +36,13 @@ export const deleteUserProfile = async (uid: string) => {
 
 // Trip Services
 export const saveTrip = async (trip: Trip) => {
+    // Ensure fuel prices for this date are fetched and stored
+    try {
+        await getFuelPrices(trip.date);
+    } catch (e) {
+        console.error("Failed to pre-fetch fuel prices for trip date:", e);
+    }
+
     const tripRef = doc(collection(db, "trips"), `${trip.date}_${trip.groupId}`);
     await setDoc(tripRef, {
         ...trip,
@@ -98,8 +107,7 @@ export const getGroups = async (): Promise<Group[]> => {
     });
 };
 
-import { format } from "date-fns";
-import { calculateRouteDistance } from "./fuel-service";
+// end group services
 
 export const calculateAndSaveTripDistance = async (tripId: string, date: string, driverUid: string) => {
     try {

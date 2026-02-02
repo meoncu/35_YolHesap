@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getAllTrips, getUsers } from "@/lib/db-service";
-import { getFuelPrices, FuelPriceData } from "@/lib/fuel-service";
+import { getFuelPrices, getMonthFuelHistory, FuelPriceData } from "@/lib/fuel-service";
 import { Trip, UserProfile } from "@/types";
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -37,20 +37,24 @@ export default function ReportsPage() {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [fuelPrices, setFuelPrices] = useState<FuelPriceData | null>(null);
+    const [fuelHistory, setFuelHistory] = useState<Record<string, FuelPriceData>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [allTrips, allUsers, prices] = await Promise.all([
+                const monthStr = format(selectedMonth, "yyyy-MM");
+                const [allTrips, allUsers, prices, history] = await Promise.all([
                     getAllTrips(),
                     getUsers(),
-                    getFuelPrices()
+                    getFuelPrices(),
+                    getMonthFuelHistory(monthStr)
                 ]);
                 setTrips(allTrips);
                 setUsers(allUsers);
                 setFuelPrices(prices);
+                setFuelHistory(history);
             } catch (error) {
                 console.error("Error fetching report data:", error);
             } finally {
@@ -58,7 +62,7 @@ export default function ReportsPage() {
             }
         };
         fetchData();
-    }, []);
+    }, [selectedMonth]);
 
     // Helper: Get Driver Info
     const getDriverInfo = (uid: string) => users.find(u => u.uid === uid);
@@ -81,18 +85,20 @@ export default function ReportsPage() {
             const driver = getDriverInfo(trip.driverUid);
             const vehicle = driver?.vehicle;
 
-            // Default distance if missing (mock logic: round trip estimate 50km or random for demo if 0)
+            // Default distance if missing
             const distance = trip.distanceKm || 50;
 
             const consumptionRate = vehicle?.consumption || 7.0; // Default 7L/100km
             const fuelType = vehicle?.fuelType || 'benzin';
 
-            // Get price based on fuel type
+            // Get price based on fuel type for this SPECIFIC DATE
+            const dailyPrice = fuelHistory[trip.date] || fuelPrices;
+
             let pricePerLiter = 0;
-            if (fuelType === 'benzin') pricePerLiter = fuelPrices.benzin;
-            else if (fuelType === 'motorin') pricePerLiter = fuelPrices.motorin;
-            else if (fuelType === 'lpg') pricePerLiter = fuelPrices.lpg;
-            else pricePerLiter = fuelPrices.benzin; // default
+            if (fuelType === 'benzin') pricePerLiter = dailyPrice.benzin;
+            else if (fuelType === 'motorin') pricePerLiter = dailyPrice.motorin;
+            else if (fuelType === 'lpg') pricePerLiter = dailyPrice.lpg;
+            else pricePerLiter = dailyPrice.benzin; // default
 
             const litersConsumed = (distance / 100) * consumptionRate;
             const cost = litersConsumed * pricePerLiter;
@@ -128,7 +134,7 @@ export default function ReportsPage() {
         });
 
         return { daily: dailyStats, byDriver: Object.values(driverStats) };
-    }, [filteredTrips, fuelPrices, users]);
+    }, [filteredTrips, fuelPrices, fuelHistory, users]);
 
     const totalMonthCost = stats.daily.reduce((acc: number, curr: any) => acc + (curr.cost || 0), 0);
     const totalMonthKm = stats.daily.reduce((acc: number, curr: any) => acc + (curr.distance || 0), 0);

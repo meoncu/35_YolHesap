@@ -1,39 +1,79 @@
-
 import axios from 'axios';
+import { db } from './firebase';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { format, parseISO } from 'date-fns';
 
 export interface FuelPriceData {
     benzin: number;
     motorin: number;
     lpg: number;
-    lastUpdated: Date;
+    lastUpdated?: any;
+    date: string; // YYYY-MM-DD
 }
 
-export const getFuelPrices = async (): Promise<FuelPriceData> => {
+/**
+ * Fetches fuel prices for a specific date. 
+ * Checks Firestore first, if not found pulls from API and saves.
+ */
+export const getFuelPrices = async (targetDate: string = format(new Date(), "yyyy-MM-dd")): Promise<FuelPriceData> => {
     try {
+        // 1. Try Firestore cache first
+        const fuelRef = doc(db, "fuelPrices", targetDate);
+        const fuelSnap = await getDoc(fuelRef);
+
+        if (fuelSnap.exists()) {
+            return fuelSnap.data() as FuelPriceData;
+        }
+
+        // 2. Not in Firestore, fetch from API
+        // Note: For historical dates, this API might only return CURRENT.
+        // In a production app, a daily cron job would populate this.
         const response = await axios.get('https://hasanadiguzel.com.tr/api/akaryakit/sehir=ANKARA');
-        const data = response.data.data[0]; // Assuming array response based on typical structure for this API
+        const data = response.data.data[0];
 
-        // Parse prices - API usually returns them as numeric strings or numbers
-        // We need to inspect the actual response structure in a real scenario, 
-        // but based on similar Turkish APIs:
-        // "benzin": "40.10", "motorin": "42.50", ...
-
-        return {
-            benzin: parseFloat(data.benzin),
-            motorin: parseFloat(data.motorin),
-            lpg: parseFloat(data.lpg),
-            lastUpdated: new Date()
+        const prices: FuelPriceData = {
+            benzin: parseFloat(data.benzin) || 40.0,
+            motorin: parseFloat(data.motorin) || 42.0,
+            lpg: parseFloat(data.lpg) || 20.0,
+            date: targetDate,
+            lastUpdated: new Date().toISOString()
         };
+
+        // 3. Save to Firestore for future lookups
+        await setDoc(fuelRef, prices);
+
+        return prices;
     } catch (error) {
         console.error("Error fetching fuel prices:", error);
-        // Fallback default prices (Ankara approx)
         return {
             benzin: 40.0,
             motorin: 42.0,
             lpg: 20.0,
-            lastUpdated: new Date()
+            date: targetDate
         };
     }
+};
+
+/**
+ * Fetches all stored fuel prices for a specific month
+ */
+export const getMonthFuelHistory = async (monthStr: string): Promise<Record<string, FuelPriceData>> => {
+    const history: Record<string, FuelPriceData> = {};
+    try {
+        const q = query(
+            collection(db, "fuelPrices"),
+            where("date", ">=", `${monthStr}-01`),
+            where("date", "<=", `${monthStr}-31`)
+        );
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+            const data = doc.data() as FuelPriceData;
+            history[data.date] = data;
+        });
+    } catch (error) {
+        console.error("Error fetching fuel history:", error);
+    }
+    return history;
 };
 
 // Haversine formula to calculate distance
