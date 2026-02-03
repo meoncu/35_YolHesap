@@ -10,15 +10,19 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 export default function LoginPage() {
-    const { user, signInWithGoogle, loading } = useAuth();
+    const { user, profile, signInWithGoogle, loading } = useAuth();
     const router = useRouter();
     const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
     useEffect(() => {
-        if (user && !loading) {
-            router.push("/");
+        if (user && !loading && profile) {
+            if (profile.isApproved === false) {
+                router.push("/pending-approval");
+            } else {
+                router.push("/");
+            }
         }
-    }, [user, loading, router]);
+    }, [user, loading, profile, router]);
 
     const handleLogin = async () => {
         setIsLoggingIn(true);

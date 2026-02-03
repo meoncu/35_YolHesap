@@ -15,6 +15,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     profile: any | null;
+    profileLoading: boolean;
     signInWithGoogle: () => Promise<void>;
     logout: () => Promise<void>;
 }
@@ -25,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
-    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(true);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -110,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, profile, signInWithGoogle, logout }}>
+        <AuthContext.Provider value={{ user, loading, profile, profileLoading, signInWithGoogle, logout }}>
             {children}
         </AuthContext.Provider>
     );
