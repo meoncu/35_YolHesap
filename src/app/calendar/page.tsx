@@ -28,12 +28,12 @@ import Link from "next/link";
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { tr } from "date-fns/locale";
 import { db } from "@/lib/firebase";
-import { getUsers, saveTrip, getAllTrips, getAppSettings, getApprovedUsers } from "@/lib/db-service";
-import { doc, getDoc } from "firebase/firestore";
-import { UserProfile, Trip } from "@/types";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { Trip, UserProfile } from "@/types";
+import { getApprovedUsers, getAllTrips, saveTrip, getAppSettings } from "@/lib/db-service";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { SeatingPlan } from "@/components/dashboard/SeatingPlan";
 
 export default function CalendarPage() {
     const { profile } = useAuth();
@@ -88,10 +88,22 @@ export default function CalendarPage() {
                     setParticipants(data.participants || []);
                     setTripType(data.type || 'full'); // Set tripType from fetched data
                 } else {
+                    // Inherit from the most recent past trip
+                    const pastTrips = [...allTrips]
+                        .filter(t => t.date < dateStr)
+                        .sort((a, b) => b.date.localeCompare(a.date));
+
+                    if (pastTrips.length > 0) {
+                        const lastTrip = pastTrips[0];
+                        setDriver(lastTrip.driverUid || "");
+                        setParticipants(lastTrip.participants || []);
+                        setTripType(lastTrip.type || 'full');
+                    } else {
+                        setDriver("");
+                        setParticipants([]);
+                        setTripType('full');
+                    }
                     setCurrentTrip(null);
-                    setDriver("");
-                    setParticipants([]);
-                    setTripType('full'); // Reset to default if no trip exists
                 }
             } catch (error) {
                 console.error("Error fetching trip:", error);
@@ -159,85 +171,102 @@ export default function CalendarPage() {
                     </div>
                 </header>
 
-                <div className="flex flex-col md:flex-row gap-6 items-start">
-                    <Card className="border-border shadow-md bg-card p-2 w-full md:w-auto shrink-0">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={handleDateSelect}
-                            className="rounded-md border-none flex justify-center"
-                            locale={tr}
-                        />
-                    </Card>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                    <div className="flex flex-col gap-3">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Takvim</h3>
+                        <Card className="border-border shadow-md p-6 bg-card flex-1 flex flex-col items-center justify-center min-h-[580px] rounded-[3rem]">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                className="scale-125 md:scale-150 origin-center"
+                                locale={tr}
+                            />
+                        </Card>
+                    </div>
 
-                    <section className="space-y-3 flex-1 w-full">
+                    <div className="flex flex-col gap-3">
                         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Seçili Gün Özeti</h3>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={date?.toString()}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="flex-1"
                             >
-                                <Card className="border-border shadow-sm overflow-hidden h-full bg-card">
-                                    <CardHeader className="bg-muted flex flex-row items-center justify-between space-y-0 py-3">
-                                        <span className="text-sm font-semibold text-foreground">{date ? format(date, "d MMMM yyyy, EEEE", { locale: tr }) : "Gün seçiniz"}</span>
-                                        <CalendarIcon size={16} className="text-primary" />
+                                <Card className="border-border shadow-md overflow-hidden bg-card flex-1 flex flex-col h-full min-h-[580px] rounded-[3rem]">
+                                    <CardHeader className="bg-muted/50 border-b border-border flex flex-row items-center justify-between space-y-0 py-5 px-8 shrink-0">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-black text-primary uppercase tracking-tighter">İNCELENEN GÜN</span>
+                                            <span className="text-lg font-bold text-foreground">{date ? format(date, "d MMMM yyyy, EEEE", { locale: tr }) : "Gün seçiniz"}</span>
+                                        </div>
+                                        <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                                            <CalendarIcon size={24} strokeWidth={2.5} />
+                                        </div>
                                     </CardHeader>
-                                    <CardContent className="pt-4">
+                                    <CardContent className="p-6 flex-1 flex flex-col">
                                         {loading ? (
-                                            <div className="flex justify-center py-6">
-                                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                            <div className="flex-1 flex flex-col items-center justify-center py-12">
+                                                <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" />
+                                                <p className="mt-4 text-[10px] font-black text-muted-foreground tracking-widest uppercase">Yükleniyor...</p>
                                             </div>
-                                        ) : currentTrip ? (
-                                            <div className="space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                        <Car size={20} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Şoför</p>
-                                                        <p className="font-semibold text-foreground">
-                                                            {members.find(m => m.uid === currentTrip.driverUid)?.name || "Bilinmiyor"}
-                                                        </p>
-                                                    </div>
+                                        ) : (currentTrip || driver) ? (
+                                            <div className="flex-1 flex flex-col gap-6">
+                                                <div className="flex-1 min-h-[280px]">
+                                                    <SeatingPlan
+                                                        driver={members.find(m => m.uid === (currentTrip?.driverUid || driver))}
+                                                        participants={members.filter(m => (currentTrip?.participants || participants).includes(m.uid))}
+                                                        className="h-full py-8 bg-muted/20 border border-border/50"
+                                                    />
                                                 </div>
 
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
-                                                        <Users size={20} />
+                                                <div className="space-y-3">
+                                                    <div className="flex gap-2">
+                                                        {!currentTrip && (
+                                                            <button
+                                                                onClick={handleSaveTrip}
+                                                                disabled={saveLoading}
+                                                                className="flex-1 rounded-2xl bg-primary text-primary-foreground font-black uppercase text-[10px] tracking-widest h-14 hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                                                            >
+                                                                {saveLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : "GÜNÜ ONAYLA"}
+                                                            </button>
+                                                        )}
+                                                        {profile?.role === 'admin' && (
+                                                            <Button
+                                                                onClick={() => setIsDialogOpen(true)}
+                                                                variant="outline"
+                                                                className={cn("rounded-2xl border-border font-black uppercase text-[10px] tracking-widest h-14 hover:bg-muted transition-all", !currentTrip ? "w-1/3" : "w-full")}
+                                                            >
+                                                                DÜZENLE
+                                                            </Button>
+                                                        )}
                                                     </div>
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Katılımcılar</p>
-                                                        <p className="text-sm text-foreground">
-                                                            {currentTrip.participants.length > 0
-                                                                ? currentTrip.participants.map(p => members.find(m => m.uid === p)?.name).filter(Boolean).join(", ")
-                                                                : "Kimse katılmadı"}
-                                                        </p>
-                                                    </div>
+                                                    {!currentTrip && (
+                                                        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                            <p className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">
+                                                                Önceki günden devralındı
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {profile?.role === 'admin' && (
-                                                    <Button
-                                                        onClick={() => setIsDialogOpen(true)}
-                                                        variant="outline"
-                                                        className="w-full mt-2"
-                                                    >
-                                                        Düzenle
-                                                    </Button>
-                                                )}
                                             </div>
                                         ) : (
-                                            <div className="text-center py-6">
-                                                <div className="flex justify-center mb-2 text-muted-foreground/30">
-                                                    <Info size={40} />
+                                            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
+                                                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground/20">
+                                                    <Info size={48} />
                                                 </div>
-                                                <p className="text-muted-foreground text-sm">Bu gün için henüz kayıt girilmemiş.</p>
+                                                <div>
+                                                    <p className="text-foreground font-black text-sm uppercase tracking-tight">Kayıt Bulunamadı</p>
+                                                    <p className="text-muted-foreground text-[10px] font-bold mt-1">Bu tarih için henüz bir yolculuk planlanmamış.</p>
+                                                </div>
                                                 {profile?.role === 'admin' && (
                                                     <Button
                                                         onClick={() => setIsDialogOpen(true)}
-                                                        className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
+                                                        className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl h-12 px-8 text-[11px] uppercase font-black tracking-widest shadow-lg shadow-primary/20"
                                                     >
-                                                        Kayıt Ekle
+                                                        Yolculuk Ekle
                                                     </Button>
                                                 )}
                                             </div>
@@ -246,7 +275,7 @@ export default function CalendarPage() {
                                 </Card>
                             </motion.div>
                         </AnimatePresence>
-                    </section>
+                    </div>
                 </div>
 
                 {/* Monthly Trip List (Moved from Dashboard) */}
@@ -314,10 +343,45 @@ export default function CalendarPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex-1 flex items-center gap-2 opacity-30 italic">
-                                                    <div className="h-1 w-1 rounded-full bg-muted-foreground" />
-                                                    <span className="text-xs font-bold text-muted-foreground">Yolculuk kaydı yok.</span>
-                                                </div>
+                                                (() => {
+                                                    const inheritedTrip = allTrips
+                                                        .filter(t => t.date < dayStr)
+                                                        .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+                                                    if (inheritedTrip) {
+                                                        const iDriver = members.find(m => m.uid === inheritedTrip.driverUid);
+                                                        const iParticipants = members.filter(m => inheritedTrip.participants.includes(m.uid));
+                                                        return (
+                                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="bg-muted p-2 rounded-xl text-muted-foreground"><Car size={16} /></div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                                                                            ÖNERİ <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                                                                        </span>
+                                                                        <span className="text-xs font-black text-muted-foreground tracking-tight leading-none">{iDriver?.name || "Bilinmiyor"}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="bg-muted p-2 rounded-xl text-muted-foreground"><Users size={16} /></div>
+                                                                    <div className="flex flex-col overflow-hidden">
+                                                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">KATILIMCILAR</span>
+                                                                        <span className="text-xs font-bold text-muted-foreground truncate tracking-tight leading-none">
+                                                                            {iParticipants.map(p => p.name).join(", ")}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <div className="flex-1 flex items-center gap-2 opacity-30 italic">
+                                                            <div className="h-1 w-1 rounded-full bg-muted-foreground" />
+                                                            <span className="text-xs font-bold text-muted-foreground">Yolculuk kaydı yok.</span>
+                                                        </div>
+                                                    );
+                                                })()
                                             )}
                                         </div>
                                     </div>

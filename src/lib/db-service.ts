@@ -12,7 +12,7 @@ import {
     deleteDoc
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Trip, UserProfile, Group } from "@/types";
+import { Trip, UserProfile, Group, DrivingTrack } from "@/types";
 import { format } from "date-fns";
 import { calculateRouteDistance, getFuelPrices } from "./fuel-service";
 
@@ -104,7 +104,6 @@ export const getRoute = async (date: string, uid: string) => {
     return querySnapshot.docs.map(doc => doc.data());
 };
 
-// Group Services
 export const getGroups = async (): Promise<Group[]> => {
     const querySnapshot = await getDocs(collection(db, "groups"));
     return querySnapshot.docs.map(doc => {
@@ -114,6 +113,29 @@ export const getGroups = async (): Promise<Group[]> => {
 };
 
 // end group services
+
+// Driving Track Services
+export const saveDrivingTrack = async (track: DrivingTrack) => {
+    const trackRef = doc(collection(db, "drivingTracks"), `${track.date}_${track.userId}_${track.type}`);
+    await setDoc(trackRef, {
+        ...track,
+        updatedAt: serverTimestamp()
+    }, { merge: true });
+};
+
+export const getDrivingTracks = async (userId: string, month: string): Promise<DrivingTrack[]> => {
+    // month format "YYYY-MM"
+    const tracksRef = collection(db, "drivingTracks");
+    const q = query(
+        tracksRef,
+        where("userId", "==", userId),
+        where("date", ">=", `${month}-01`),
+        where("date", "<=", `${month}-31`),
+        orderBy("date", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ ...doc.data() as DrivingTrack, id: doc.id }));
+};
 
 export const calculateAndSaveTripDistance = async (tripId: string, date: string, driverUid: string) => {
     try {

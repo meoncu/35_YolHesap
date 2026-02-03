@@ -6,6 +6,7 @@ import { ShieldAlert } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { GpsTracker } from "@/components/dashboard/GpsTracker";
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { loading, profile } = useAuth();
@@ -23,6 +24,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
     return (
         <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300">
+            <GpsTracker />
             {/* <Header /> Removed for dashboard layout optimization */}
             <main className="flex-1 pb-20 md:pb-0 pt-4">
                 <AuthGuard>

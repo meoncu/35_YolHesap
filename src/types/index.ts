@@ -36,6 +36,7 @@ export interface Trip {
     type?: 'morning' | 'evening' | 'full';
     routeId?: string;
     distanceKm?: number;
+    isInherited?: boolean;
 }
 
 export interface Route {
@@ -52,4 +53,16 @@ export interface MonthlySettlement {
     totalDebt: number; // Borç (yolcu olduğu günler)
     totalCredit: number; // Alacak (şoför olduğu günler)
     netAmount: number; // Credit - Debt
+}
+
+export interface DrivingTrack {
+    id?: string;
+    userId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    distanceKm: number;
+    avgSpeed: number; // km/h
+    points: { lat: number; lng: number; timestamp: number }[];
+    type: 'morning' | 'evening';
 }

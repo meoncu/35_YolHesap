@@ -37,14 +37,16 @@ import {
   Fuel,
   User,
   Download,
-  Smartphone
+  Smartphone,
+  Clock,
+  ArrowUpRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { getUsers, getAllTrips, saveTrip, saveLocation, getAppSettings, AppSettings, getApprovedUsers } from "@/lib/db-service";
+import { getUsers, getAllTrips, saveTrip, saveLocation, getAppSettings, AppSettings, getApprovedUsers, getDrivingTracks } from "@/lib/db-service";
 import { getFuelPrices, FuelPriceData } from "@/lib/fuel-service";
-import { UserProfile, Trip } from "@/types";
+import { UserProfile, Trip, DrivingTrack } from "@/types";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addDays } from "date-fns";
 import { tr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -99,12 +101,49 @@ export default function Dashboard() {
 
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [settings, setSettings] = useState<AppSettings>({ dailyFee: 100 });
+  const [drivingTracks, setDrivingTracks] = useState<DrivingTrack[]>([]);
   const { isDarkMode, toggleDarkMode } = useTheme();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const prayerTimes = useMemo(() => [
+    { n: 'İmsak', t: '06:28' },
+    { n: 'Güneş', t: '07:53' },
+    { n: 'Öğle', t: '13:08' },
+    { n: 'İkindi', t: '15:53' },
+    { n: 'Akşam', t: '18:12' },
+    { n: 'Yatsı', t: '19:32' }
+  ], []);
+
+  const { nextPrayerIdx, countdown } = useMemo(() => {
+    const now = currentTime;
+    const timeStrS = format(now, "HH:mm:ss");
+
+    let nextIdx = prayerTimes.findIndex(p => p.t + ":00" > timeStrS);
+    if (nextIdx === -1) nextIdx = 0;
+
+    const next = prayerTimes[nextIdx];
+    const [h, m] = next.t.split(':').map(Number);
+    const target = new Date(now);
+    target.setHours(h, m, 0, 0);
+
+    if (target < now) {
+      target.setDate(target.getDate() + 1);
+    }
+
+    const diff = target.getTime() - now.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return {
+      nextPrayerIdx: nextIdx,
+      countdown: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    };
+  }, [currentTime, prayerTimes]);
 
   const timeStr = format(currentTime, "HH:mm");
   const isMorningRush = timeStr >= "08:00" && timeStr <= "08:30";
@@ -168,16 +207,18 @@ export default function Dashboard() {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        const [fetchedUsers, trips, prices, appSettings] = await Promise.all([
+        const [fetchedUsers, trips, prices, appSettings, tracks] = await Promise.all([
           getApprovedUsers(),
           getAllTrips(),
           getFuelPrices(),
-          getAppSettings()
+          getAppSettings(),
+          user ? getDrivingTracks(user.uid, format(new Date(), "yyyy-MM")) : Promise.resolve([])
         ]);
         setMembers(fetchedUsers);
         setAllTrips(trips);
         setFuelPrices(prices);
         setSettings(appSettings);
+        setDrivingTracks(tracks as DrivingTrack[]);
       } catch (error) {
         console.error("Error fetching initial dashboard data:", error);
       } finally {
@@ -232,21 +273,7 @@ export default function Dashboard() {
     calculateDashboardStats();
   }, [user, selectedDate, allTrips, members]);
 
-  useEffect(() => {
-    if (!user || !todayTrip?.driverUid || user.uid !== todayTrip.driverUid) return;
-    const isMorningWindow = timeStr >= "08:00" && timeStr <= "09:00";
-    const isEveningWindow = timeStr >= "17:30" && timeStr <= "18:30";
-    if (!isMorningWindow && !isEveningWindow) return;
-    let watchId: number;
-    if ("geolocation" in navigator) {
-      watchId = navigator.geolocation.watchPosition(
-        (p) => saveLocation(user.uid, p.coords.latitude, p.coords.longitude).catch(console.error),
-        (e) => console.error("GPS Error:", e),
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
-    }
-    return () => { if (watchId) navigator.geolocation.clearWatch(watchId); };
-  }, [user, todayTrip?.driverUid, timeStr]);
+
 
   const handleUpdateTrip = async (updates: { driverUid?: string, participants?: string[] }) => {
     if (!user) return;
@@ -384,20 +411,34 @@ export default function Dashboard() {
           {/* Namaz Widget */}
           <div className="hidden xl:flex items-center justify-center p-2 rounded-2xl border backdrop-blur-md h-[72px] bg-card/60 border-border shadow-sm">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 pr-4 border-r border-border opacity-80">
+              <div className="flex items-center gap-4 pr-4 border-r border-border">
                 <Moon size={14} className="text-emerald-500" />
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold uppercase text-muted-foreground">Namaz Vakti</span>
-                  <span className="text-[10px] font-black text-foreground">Ankara</span>
+                  <span className="text-[9px] font-black uppercase text-primary/70 tracking-tighter">İNCELENEN VAKİT</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-foreground">Ankara</span>
+                    <div className="bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20 flex items-center gap-1">
+                      <Clock size={10} className="text-primary animate-pulse" />
+                      <span className="text-[10px] font-black text-primary font-mono tabular-nums">{countdown}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                {[{ n: 'İmsak', t: '06:28' }, { n: 'Güneş', t: '07:53' }, { n: 'Öğle', t: '13:08' }, { n: 'İkindi', t: '15:53' }, { n: 'Akşam', t: '18:12' }, { n: 'Yatsı', t: '19:32' }].map((v, i) => (
-                  <div key={v.n} className={cn("flex flex-col items-center px-2 py-1 rounded-lg", i === 4 ? "bg-emerald-50 dark:bg-emerald-900/20 ring-1 ring-emerald-100 dark:ring-emerald-800" : "")}>
-                    <span className="text-[8px] font-bold uppercase text-muted-foreground">{v.n}</span>
-                    <span className={cn("text-[10px] font-black", i === 4 ? "text-emerald-700 dark:text-emerald-400" : "text-foreground")}>{v.t}</span>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                {prayerTimes.map((v, i) => {
+                  const isNext = i === nextPrayerIdx;
+                  return (
+                    <div key={v.n} className={cn(
+                      "flex flex-col items-center px-3 py-1.5 rounded-2xl transition-all duration-500",
+                      isNext
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105"
+                        : "bg-card/40 hover:bg-card/80 border border-transparent hover:border-border"
+                    )}>
+                      <span className={cn("text-[8px] font-black uppercase tracking-widest", isNext ? "text-primary-foreground/70" : "text-muted-foreground")}>{v.n}</span>
+                      <span className={cn("text-[11px] font-black", isNext ? "text-primary-foreground" : "text-foreground")}>{v.t}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -433,29 +474,42 @@ export default function Dashboard() {
                       <span className="text-xl">{format(new Date(), "d")}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">{format(new Date(), "MMMM", { locale: tr })}</span>
-                      <h3 className="text-sm font-black text-primary">BUGÜN</h3>
+                      <span className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">{format(new Date(), "MMMM", { locale: tr })}</span>
+                      <h3 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">AKTİF YOLCULUK</h3>
                     </div>
                   </div>
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100/50 dark:border-amber-800/30 flex items-center gap-3">
-                      <Car size={20} className="text-amber-600" />
+                    <div className="bg-amber-100/40 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-200/60 dark:border-amber-700/30 flex items-center gap-4 transition-all hover:bg-amber-100/60">
+                      <div className="bg-amber-500 dark:bg-amber-600 p-2.5 rounded-xl text-white shadow-sm">
+                        <Car size={20} />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-amber-700/50 dark:text-amber-500/50 uppercase">ŞÖFÖR</span>
-                        <span className="text-sm font-black text-amber-900 dark:text-amber-100">{members.find(m => m.uid === todayTrip.driverUid)?.name || "Bilinmiyor"}</span>
+                        <span className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-[0.15em] mb-0.5">ŞÖFÖR</span>
+                        <span className="text-sm font-black text-slate-900 dark:text-slate-50 leading-tight">{members.find(m => m.uid === todayTrip.driverUid)?.name || "Bilinmiyor"}</span>
                       </div>
                     </div>
-                    <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex items-center gap-3">
-                      <Users size={20} className="text-primary" />
+                    <div className="bg-indigo-100/40 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-200/60 dark:border-indigo-700/30 flex items-center gap-4 transition-all hover:bg-indigo-100/60">
+                      <div className="bg-indigo-500 dark:bg-indigo-600 p-2.5 rounded-xl text-white shadow-sm">
+                        <Users size={20} />
+                      </div>
                       <div className="flex flex-col truncate">
-                        <span className="text-[9px] font-black text-primary/50 uppercase">YOLCULAR</span>
-                        <span className="text-sm font-bold text-foreground truncate">
+                        <span className="text-[9px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-[0.15em] mb-0.5">YOLCULAR</span>
+                        <span className="text-sm font-black text-slate-900 dark:text-slate-50 truncate leading-tight">
                           {todayTrip.participants?.map((id: string) => members.find(m => m.uid === id)?.name).filter(Boolean).join(", ")}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 w-full md:w-auto">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    {todayTrip.isInherited && (
+                      <Button
+                        onClick={() => handleUpdateTrip({})}
+                        className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest px-6 shadow-lg shadow-primary/20"
+                        disabled={isUpdatingDriver}
+                      >
+                        {isUpdatingDriver ? <LoaderIcon className="animate-spin" size={14} /> : "Günü Onayla"}
+                      </Button>
+                    )}
                     <Button onClick={() => setIsSeatingPlanOpen(true)} className="flex-1 rounded-xl bg-secondary text-secondary-foreground border border-border hover:bg-muted font-bold uppercase text-[10px] tracking-widest px-4">Oturma Planı</Button>
                     <Button onClick={() => setIsDriverDialogOpen(true)} className="flex-1 rounded-xl bg-secondary text-secondary-foreground border border-border hover:bg-muted font-bold uppercase text-[10px] tracking-widest px-4">Düzenle</Button>
                   </div>
@@ -468,6 +522,53 @@ export default function Dashboard() {
                 </div>
               )}
             </Card>
+          </div>
+
+          {/* New Driving Tracks Section */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <div className="bg-indigo-100 dark:bg-indigo-900/20 p-1.5 rounded-lg text-indigo-600"><Clock size={16} strokeWidth={3} /></div>
+                <h2 className="text-base font-black tracking-tight text-foreground">Son Sürüşler (GPS)</h2>
+              </div>
+              <Link href="/reports?tab=gps" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">TÜMÜ</Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {drivingTracks.length > 0 ? (
+                drivingTracks.slice(0, 3).map((track, idx) => (
+                  <Link href={`/reports?tab=gps&date=${track.date}`} key={idx}>
+                    <Card className="border-border shadow-sm bg-card hover:shadow-md transition-all overflow-hidden group h-full">
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn("p-2.5 rounded-xl", track.type === 'morning' ? "bg-amber-100 text-amber-600 dark:bg-amber-900/20" : "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20")}>
+                            {track.type === 'morning' ? <Navigation size={18} /> : <Car size={18} />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-xs text-foreground">{format(parseISO(track.date), "d MMM, EEE", { locale: tr })}</span>
+                              <span className="px-1 py-0.5 rounded-md bg-muted text-muted-foreground text-[7px] font-black">
+                                {track.type === 'morning' ? "GİDİŞ" : "DÖNÜŞ"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground mt-0.5">
+                              <span>{track.startTime} - {track.endTime}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right flex items-center gap-2">
+                          <div className="text-sm font-black text-primary">{track.distanceKm.toFixed(1)} <span className="text-[8px]">KM</span></div>
+                          <ArrowUpRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                ))
+              ) : (
+                <div className="md:col-span-2 lg:col-span-3 py-10 text-center text-muted-foreground text-xs font-bold bg-muted/30 rounded-[2rem] border border-dashed border-border">
+                  Henüz sürüş kaydı bulunmuyor.
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Quick Actions & Analysis */}
@@ -535,14 +636,19 @@ export default function Dashboard() {
               <div className="bg-amber-100 dark:bg-amber-900/20 p-1.5 rounded-lg text-amber-600"><Fuel size={16} strokeWidth={3} /></div>
               <h2 className="text-base font-black tracking-tight text-foreground">Rapor Analizleri</h2>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Link href="/reports" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Link href="/reports?tab=fuel" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center mb-4 text-amber-600"><Fuel size={24} /></div>
                 <h3 className="text-lg font-black text-foreground mb-1">Yakıt Raporu</h3>
                 <p className="text-xs text-muted-foreground font-bold">Maliyet ve tüketim özeti.</p>
               </Link>
+              <Link href="/reports?tab=gps" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center mb-4 text-indigo-600"><Navigation size={24} /></div>
+                <h3 className="text-lg font-black text-foreground mb-1">GPS Raporu</h3>
+                <p className="text-xs text-muted-foreground font-bold">Gidilen yollar ve KM verisi.</p>
+              </Link>
               <Link href="/group" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center mb-4 text-indigo-600"><Users size={24} /></div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mb-4 text-blue-600"><Users size={24} /></div>
                 <h3 className="text-lg font-black text-foreground mb-1">Üye Listesi</h3>
                 <p className="text-xs text-muted-foreground font-bold">Takım arkadaşların.</p>
               </Link>

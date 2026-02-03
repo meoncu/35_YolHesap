@@ -7,7 +7,7 @@ import { GoogleMap, useJsApiLoader, TrafficLayer, DirectionsService, DirectionsR
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Navigation, Info, Save, Layers, ArrowLeft, AlertCircle, Car } from "lucide-react";
+import { MapPin, Navigation, Info, Save, Layers, ArrowLeft, AlertCircle, Car, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,7 @@ export default function MapPage() {
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [showTraffic, setShowTraffic] = useState(true);
     const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+    const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
     const [routeStats, setRouteStats] = useState<{ distance: string, duration: string } | null>(null);
 
     // Live Location State
@@ -114,7 +115,7 @@ export default function MapPage() {
                 origin: userLocation || LOCATIONS.ETIMESGUT,
                 destination: COORDS.TARIM_KREDI,
                 departureTime: now,
-                waypoints: [POINTS.ANKARA_BLVD, POINTS.SABANCI_BLVD]
+                waypoints: [] // Let Google suggest best alternatives instead of forcing waypoints
             };
         }
     }, [userLocation]);
@@ -167,6 +168,19 @@ export default function MapPage() {
     const onUnmount = useCallback(function callback(map: google.maps.Map) {
         setMap(null);
     }, []);
+
+    const onRouteClick = (index: number) => {
+        setSelectedRouteIndex(index);
+        if (directions) {
+            const route = directions.routes[index].legs[0];
+            if (route && route.distance && (route.duration_in_traffic || route.duration)) {
+                setRouteStats({
+                    distance: route.distance.text,
+                    duration: (route.duration_in_traffic || route.duration)!.text
+                });
+            }
+        }
+    };
 
     const saveRoute = () => {
         console.log("Saving route...");
@@ -245,16 +259,14 @@ export default function MapPage() {
                                     }
                                 }}
                                 callback={(result, status) => {
-                                    if (result !== null && status === 'OK') {
-                                        if (!directions) {
-                                            setDirections(result);
-                                            const route = result.routes[0].legs[0];
-                                            if (route && route.distance && route.duration) {
-                                                setRouteStats({
-                                                    distance: route.distance.text,
-                                                    duration: route.duration.text
-                                                });
-                                            }
+                                    if (result !== null && status === 'OK' && directions === null) {
+                                        setDirections(result);
+                                        const route = result.routes[0].legs[0];
+                                        if (route && route.distance && (route.duration_in_traffic || route.duration)) {
+                                            setRouteStats({
+                                                distance: route.distance.text,
+                                                duration: (route.duration_in_traffic || route.duration)!.text
+                                            });
                                         }
                                     }
                                 }}
@@ -263,14 +275,15 @@ export default function MapPage() {
                             {directions && (
                                 <DirectionsRenderer
                                     directions={directions}
+                                    routeIndex={selectedRouteIndex}
                                     options={{
                                         polylineOptions: {
-                                            strokeColor: routeConfig.mode === "morning" ? "#1E3A8A" : "#DC2626", // Blue for morning, Red for evening
-                                            strokeWeight: 6,
+                                            strokeColor: routeConfig.mode === "morning" ? "#3B82F6" : "#EF4444",
+                                            strokeWeight: 7,
                                             strokeOpacity: 0.8
                                         },
                                         markerOptions: {
-                                            visible: true
+                                            visible: false // We use our own markers or just leave them
                                         }
                                     }}
                                 />
@@ -283,11 +296,11 @@ export default function MapPage() {
                                     title="Konumunuz"
                                     icon={{
                                         path: CAR_ICON_PATH,
-                                        fillColor: "#F59E0B", // Amber car
+                                        fillColor: "#FCD34D", // Bright Yellow (Amber 300)
                                         fillOpacity: 1,
-                                        strokeWeight: 1,
-                                        strokeColor: "#ffffff",
-                                        scale: 1.2,
+                                        strokeWeight: 2,
+                                        strokeColor: "#000000", // Dark outline for pop
+                                        scale: 2.2, // Much larger
                                         anchor: new google.maps.Point(12, 12),
                                     }}
                                 />
@@ -333,6 +346,62 @@ export default function MapPage() {
                         )}
                     </div>
                 </section>
+
+                {/* Route Alternatives Selection */}
+                {directions && directions.routes.length > 0 && (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                            <div className="bg-primary/10 p-1.5 rounded-lg text-primary"><Navigation size={16} strokeWidth={3} /></div>
+                            <h2 className="text-base font-black tracking-tight text-foreground">Güzergâh Önerileri</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {directions.routes.map((route, idx) => {
+                                const leg = route.legs[0];
+                                const isFastest = idx === 0; // Google sorts by relevance/speed usually
+                                const duration = leg.duration_in_traffic?.text || leg.duration?.text;
+                                const distance = leg.distance?.text;
+
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => onRouteClick(idx)}
+                                        className={cn(
+                                            "relative p-4 rounded-[2rem] border transition-all text-left group",
+                                            selectedRouteIndex === idx
+                                                ? "bg-primary border-primary shadow-lg shadow-primary/20 scale-[1.02]"
+                                                : "bg-card border-border hover:border-primary/50"
+                                        )}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex flex-col">
+                                                <span className={cn("text-[8px] font-black uppercase tracking-widest", selectedRouteIndex === idx ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                                                    GÜZERGÂH {idx + 1}
+                                                </span>
+                                                <span className={cn("text-sm font-black tracking-tight", selectedRouteIndex === idx ? "text-primary-foreground" : "text-foreground")}>
+                                                    {route.summary || "Alternatif Yol"}
+                                                </span>
+                                            </div>
+                                            {isFastest && (
+                                                <div className={cn("px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-wider", selectedRouteIndex === idx ? "bg-white text-primary" : "bg-green-100 text-green-600")}>
+                                                    ÖNERİLEN
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn("flex flex-col", selectedRouteIndex === idx ? "text-primary-foreground" : "text-foreground")}>
+                                                <span className="text-xs font-black">{duration}</span>
+                                                <span className={cn("text-[9px] font-bold opacity-70", selectedRouteIndex === idx ? "text-primary-foreground/80" : "text-muted-foreground")}>{distance}</span>
+                                            </div>
+                                            <div className={cn("ml-auto w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110", selectedRouteIndex === idx ? "bg-white/20 text-white" : "bg-primary/10 text-primary")}>
+                                                <ChevronRight size={16} />
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );
