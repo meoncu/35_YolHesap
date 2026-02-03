@@ -88,8 +88,8 @@ export default function GroupPage() {
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Grup Üyeleri</h1>
-                            <p className="text-gray-500">{group?.name || "YolPay Grubu"}</p>
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">Grup Üyeleri</h1>
+                            <p className="text-muted-foreground">{group?.name || "YolPay Grubu"}</p>
                         </div>
                     </div>
                     {profile?.role === 'admin' && (
@@ -101,12 +101,12 @@ export default function GroupPage() {
 
                 {/* members List */}
                 <div className="space-y-3">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest pl-1">Üye Listesi</h3>
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Üye Listesi</h3>
 
                     <div className="grid gap-3">
                         {loading ? (
                             <div className="flex justify-center py-12">
-                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#143A5A] border-t-transparent"></div>
+                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                             </div>
                         ) : members.length > 0 ? (
                             members.map((member, i) => (
@@ -116,23 +116,23 @@ export default function GroupPage() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: i * 0.05 }}
                                 >
-                                    <Card className="border-none shadow-sm hover:shadow-md transition-all overflow-hidden bg-white">
+                                    <Card className="border-border shadow-sm hover:shadow-md transition-all overflow-hidden bg-card">
                                         <CardContent className="p-4 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-12 w-12 border-2 border-gray-50 shadow-sm">
+                                                <Avatar className="h-12 w-12 border-2 border-muted shadow-sm">
                                                     <AvatarImage src={member.photoURL} />
-                                                    <AvatarFallback className="bg-blue-50 text-[#143A5A] font-bold">
+                                                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
                                                         {member.name?.charAt(0) || "U"}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <p className="font-semibold text-gray-900">{member.name}</p>
+                                                        <p className="font-semibold text-foreground">{member.name}</p>
                                                         {member.role === 'admin' && (
-                                                            <span className="px-1.5 py-0.5 bg-[#E9EDF2] text-[#143A5A] rounded text-[10px] uppercase font-heavy">Admin</span>
+                                                            <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px] uppercase font-heavy">Admin</span>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-gray-500">{member.email}</p>
+                                                    <p className="text-xs text-muted-foreground">{member.email}</p>
                                                 </div>
                                             </div>
 
@@ -147,7 +147,7 @@ export default function GroupPage() {
                                                 {profile?.role === 'admin' && (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-gray-400">
+                                                            <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-muted-foreground">
                                                                 <MoreHorizontal size={18} />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -165,14 +165,14 @@ export default function GroupPage() {
                                 </motion.div>
                             ))
                         ) : (
-                            <p className="text-center py-12 text-gray-500">Henüz üye bulunamadı.</p>
+                            <p className="text-center py-12 text-muted-foreground">Henüz üye bulunamadı.</p>
                         )}
                     </div>
                 </div>
 
                 {profile?.role === 'admin' && (
                     <div className="pt-4 pb-12">
-                        <Button className="w-full h-12 gradient-primary shadow-lg flex items-center gap-2">
+                        <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center gap-2">
                             <Settings size={20} />
                             Grup Ayarlarını Düzenle
                         </Button>

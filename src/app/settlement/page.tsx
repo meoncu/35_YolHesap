@@ -276,23 +276,23 @@ export default function SettlementPage() {
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Hesap Makinesi</h1>
-                            <p className="text-gray-500 text-sm">Yolculuk masraflarını otomatik veya manuel hesaplayın.</p>
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">Hesap Makinesi</h1>
+                            <p className="text-muted-foreground text-sm">Yolculuk masraflarını otomatik veya manuel hesaplayın.</p>
                         </div>
                     </div>
 
                     {/* Common Action Bar */}
                     <div className="flex items-center gap-2">
-                        <div className="flex bg-gray-100 p-1 rounded-xl">
+                        <div className="flex bg-muted p-1 rounded-xl">
                             <button
                                 onClick={() => setActiveTab('auto')}
-                                className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2", activeTab === 'auto' ? "bg-white text-[#143A5A] shadow-sm" : "text-gray-500 hover:text-gray-900")}
+                                className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2", activeTab === 'auto' ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
                             >
                                 <RefreshCcw size={14} /> Otomatik
                             </button>
                             <button
                                 onClick={() => setActiveTab('manual')}
-                                className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2", activeTab === 'manual' ? "bg-white text-[#143A5A] shadow-sm" : "text-gray-500 hover:text-gray-900")}
+                                className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2", activeTab === 'manual' ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
                             >
                                 <Calculator size={14} /> Manuel
                             </button>
@@ -303,8 +303,8 @@ export default function SettlementPage() {
                             className={cn(
                                 "rounded-xl flex items-center gap-2",
                                 (activeTab === 'auto' || isManualValid)
-                                    ? "bg-[#143A5A] hover:bg-[#1F5E8C] text-white"
-                                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                                    : "bg-muted text-muted-foreground cursor-not-allowed"
                             )}
                         >
                             {isSaving ? "Kaydediliyor..." : <><Save size={18} /> Kaydet</>}
@@ -315,32 +315,32 @@ export default function SettlementPage() {
                 <div className="grid md:grid-cols-12 gap-6">
                     {/* LEFT PANEL: CONFIGURATION */}
                     <div className="md:col-span-4 space-y-6">
-                        <Card className="border-none shadow-sm">
+                        <Card className="border-border shadow-sm bg-card">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-bold uppercase text-gray-400">Ayarlar</CardTitle>
+                                <CardTitle className="text-sm font-bold uppercase text-muted-foreground">Ayarlar</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">Günlük Kişi Başı Ücret (₺)</Label>
+                                    <Label className="text-xs font-bold text-muted-foreground">Günlük Kişi Başı Ücret (₺)</Label>
                                     <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₺</div>
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₺</div>
                                         <Input
                                             type="number"
                                             value={dailyFee}
                                             onChange={e => setDailyFee(Number(e.target.value))}
-                                            className="pl-8 bg-gray-50 border-gray-100 font-bold text-gray-900"
+                                            className="pl-8 bg-muted border-border font-bold text-foreground"
                                         />
                                     </div>
                                 </div>
 
                                 {activeTab === 'auto' ? (
                                     // AUTO CONFIG
-                                    <div className="space-y-4 pt-2 border-t border-gray-100">
+                                    <div className="space-y-4 pt-2 border-t border-border">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500">Dönem Seçimi</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground">Dönem Seçimi</Label>
                                             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                                <SelectTrigger className="w-full bg-blue-50/50 border-blue-100 text-blue-900 font-bold">
-                                                    <Calendar size={16} className="mr-2 text-blue-500" />
+                                                <SelectTrigger className="w-full bg-primary/10 border-primary/20 text-primary font-bold">
+                                                    <Calendar size={16} className="mr-2 text-primary" />
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -355,41 +355,41 @@ export default function SettlementPage() {
                                             </Select>
                                         </div>
 
-                                        <div className="bg-blue-50 rounded-xl p-4 space-y-2">
+                                        <div className="bg-primary/5 rounded-xl p-4 space-y-2 border border-primary/10 text-foreground">
                                             <div className="flex justify-between items-center text-sm">
-                                                <span className="text-blue-700/60 font-bold">Bulunan Kayıt</span>
-                                                <span className="font-black text-blue-900">{totalAutoTrips} Sefer</span>
+                                                <span className="text-muted-foreground font-bold">Bulunan Kayıt</span>
+                                                <span className="font-black text-primary">{totalAutoTrips} Sefer</span>
                                             </div>
                                             <div className="flex justify-between items-center text-sm">
-                                                <span className="text-blue-700/60 font-bold">Aktif Sürücü</span>
-                                                <span className="font-black text-blue-900">{uniqueDrivers} Kişi</span>
+                                                <span className="text-muted-foreground font-bold">Aktif Sürücü</span>
+                                                <span className="font-black text-primary">{uniqueDrivers} Kişi</span>
                                             </div>
-                                            <div className="flex justify-between items-center text-sm pt-2 border-t border-blue-100">
-                                                <span className="text-blue-700/60 font-bold">Tahmini Mesafe</span>
-                                                <span className="font-black text-blue-900">{(totalAutoTrips * 52).toLocaleString()} km</span>
+                                            <div className="flex justify-between items-center text-sm pt-2 border-t border-primary/10">
+                                                <span className="text-muted-foreground font-bold">Tahmini Mesafe</span>
+                                                <span className="font-black text-primary">{(totalAutoTrips * 52).toLocaleString()} km</span>
                                             </div>
-                                            <p className="text-[9px] text-blue-400 text-right font-medium">*Günlük gidiş-dönüş ort. 52km baz alınmıştır.</p>
+                                            <p className="text-[9px] text-primary/60 text-right font-medium">*Günlük gidiş-dönüş ort. 52km baz alınmıştır.</p>
                                         </div>
                                     </div>
                                 ) : (
                                     // MANUAL CONFIG
-                                    <div className="space-y-4 pt-2 border-t border-gray-100">
+                                    <div className="space-y-4 pt-2 border-t border-border">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500">Hesap Başlığı</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground">Hesap Başlığı</Label>
                                             <Input
                                                 value={manualTitle}
                                                 onChange={(e) => setManualTitle(e.target.value)}
                                                 placeholder="Örn: Ocak 2024"
-                                                className="bg-gray-50 border-gray-100"
+                                                className="bg-muted border-border text-foreground"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500">Toplam İş Günü</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground">Toplam İş Günü</Label>
                                             <Input
                                                 type="number"
                                                 value={manualTotalDays}
                                                 onChange={(e) => setManualTotalDays(Number(e.target.value))}
-                                                className="bg-gray-50 border-gray-100"
+                                                className="bg-muted border-border text-foreground"
                                             />
                                         </div>
                                         {/* Error Alert for Manual */}
@@ -409,18 +409,18 @@ export default function SettlementPage() {
 
                         {/* Manual Active Driver Inputs */}
                         {activeTab === 'manual' && (
-                            <Card className="border-none shadow-sm">
+                            <Card className="border-border shadow-sm bg-card">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-bold uppercase text-gray-400">Sürücü Günleri</CardTitle>
+                                    <CardTitle className="text-sm font-bold uppercase text-muted-foreground">Sürücü Günleri</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                     {users.map(user => (
-                                        <div key={user.uid} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div key={user.uid} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
+                                                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
                                                     {user.name.charAt(0)}
                                                 </div>
-                                                <span className="text-xs font-bold text-gray-700">{user.name}</span>
+                                                <span className="text-xs font-bold text-foreground">{user.name}</span>
                                             </div>
                                             <Input
                                                 type="number"
@@ -428,7 +428,7 @@ export default function SettlementPage() {
                                                 max={manualTotalDays}
                                                 value={driverDaysMap[user.uid] || 0}
                                                 onChange={(e) => setDriverDaysMap({ ...driverDaysMap, [user.uid]: parseInt(e.target.value) || 0 })}
-                                                className="w-16 h-8 text-center text-xs font-bold bg-white border-gray-200"
+                                                className="w-16 h-8 text-center text-xs font-bold bg-card border-border text-foreground"
                                             />
                                         </div>
                                     ))}
@@ -439,14 +439,14 @@ export default function SettlementPage() {
 
                     {/* RIGHT PANEL: RESULTS */}
                     <div className="md:col-span-8 space-y-6">
-                        <Card className="border-none shadow-lg overflow-hidden h-full">
-                            <CardHeader className={cn("border-b py-4", activeTab === 'auto' ? "bg-blue-50/30 border-blue-100" : "bg-gray-50 border-gray-100")}>
+                        <Card className="border-border shadow-lg overflow-hidden h-full bg-card">
+                            <CardHeader className={cn("border-b py-4", activeTab === 'auto' ? "bg-primary/5 border-primary/10" : "bg-muted border-border")}>
                                 <div className="flex items-center justify-between">
-                                    <CardTitle className="text-base font-bold text-[#143A5A] flex items-center gap-2">
+                                    <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                                         <Receipt size={18} />
                                         {activeTab === 'auto' ? 'Otomatik Hesap Özeti' : 'Manuel Hesap Özeti'}
                                     </CardTitle>
-                                    <div className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                                    <div className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">
                                         {format(new Date(), "dd.MM.yyyy")}
                                     </div>
                                 </div>
@@ -454,24 +454,24 @@ export default function SettlementPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b text-[10px] uppercase text-gray-400 bg-white">
+                                        <tr className="border-b text-[10px] uppercase text-muted-foreground bg-card">
                                             <th className="px-4 py-3 text-left font-bold">Kişi</th>
                                             <th className="px-4 py-3 text-center font-bold">Rol (Sü/Yo)</th>
                                             <th className="px-4 py-3 text-right font-bold text-red-400">Borç</th>
                                             <th className="px-4 py-3 text-right font-bold text-amber-500">Hakediş</th>
                                             <th className="px-4 py-3 text-right font-bold text-green-500">Alacak</th>
-                                            <th className="px-4 py-3 text-right font-bold text-gray-700">NET</th>
+                                            <th className="px-4 py-3 text-right font-bold text-foreground">NET</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50 bg-white">
+                                    <tbody className="divide-y divide-border bg-card">
                                         {results.map((res) => (
-                                            <tr key={res.userId} className="hover:bg-gray-50/50 transition-colors group">
-                                                <td className="px-4 py-3 font-bold text-gray-700 flex items-center gap-2">
-                                                    <div className={cn("w-2 h-2 rounded-full", res.net > 0 ? "bg-green-500" : res.net < 0 ? "bg-red-500" : "bg-gray-300")} />
+                                            <tr key={res.userId} className="hover:bg-muted/50 transition-colors group">
+                                                <td className="px-4 py-3 font-bold text-foreground flex items-center gap-2">
+                                                    <div className={cn("w-2 h-2 rounded-full", res.net > 0 ? "bg-green-500" : res.net < 0 ? "bg-red-500" : "bg-muted-foreground/30")} />
                                                     {res.userName}
                                                 </td>
-                                                <td className="px-4 py-3 text-center text-xs font-medium text-gray-500">
-                                                    <span className="text-gray-900 font-bold">{res.driverDays}</span> / {res.passengerDays} Gün
+                                                <td className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">
+                                                    <span className="text-foreground font-bold">{res.driverDays}</span> / {res.passengerDays} Gün
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold text-red-500/80">
                                                     ₺{res.debt.toLocaleString()}
@@ -485,7 +485,7 @@ export default function SettlementPage() {
                                                 <td className="px-4 py-3 text-right">
                                                     <span className={cn(
                                                         "px-3 py-1.5 rounded-lg font-black text-xs shadow-sm inline-block min-w-[80px]",
-                                                        res.net > 0 ? "bg-green-100 text-green-700" : res.net < 0 ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-500"
+                                                        res.net > 0 ? "bg-green-500/10 text-green-500 dark:bg-green-500/20" : res.net < 0 ? "bg-red-500/10 text-red-500 dark:bg-red-500/20" : "bg-muted text-muted-foreground"
                                                     )}>
                                                         {res.net > 0 ? `+₺${res.net.toLocaleString()}` : `₺${res.net.toLocaleString()}`}
                                                     </span>
@@ -494,7 +494,7 @@ export default function SettlementPage() {
                                         ))}
                                         {results.length === 0 && (
                                             <tr>
-                                                <td colSpan={5} className="text-center py-12 text-gray-400 text-xs">
+                                                <td colSpan={5} className="text-center py-12 text-muted-foreground text-xs">
                                                     Hesaplanacak veri bulunamadı.
                                                 </td>
                                             </tr>
@@ -541,21 +541,21 @@ export default function SettlementPage() {
                                         className="relative group h-full"
                                     >
                                         <div className="absolute -top-2 -right-2 z-10">
-                                            <span className="bg-[#143A5A] text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg border-2 border-white uppercase tracking-tighter">
+                                            <span className="bg-primary text-primary-foreground text-[9px] font-black px-2 py-1 rounded-full shadow-lg border-2 border-card uppercase tracking-tighter">
                                                 CANLI TASLAK
                                             </span>
                                         </div>
-                                        <Card className="border-2 border-dashed border-blue-200 bg-blue-50/20 shadow-none hover:border-blue-400 transition-all overflow-hidden flex flex-col h-full">
+                                        <Card className="border-2 border-dashed border-primary/20 bg-primary/5 shadow-none hover:border-primary/40 transition-all overflow-hidden flex flex-col h-full">
                                             <div className="p-4 flex items-start justify-between flex-1">
                                                 <div className="flex gap-3">
-                                                    <div className="p-2 rounded-xl bg-blue-500 text-white shadow-sm h-fit anim-pulse">
+                                                    <div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-sm h-fit anim-pulse">
                                                         {activeTab === 'auto' ? <RefreshCcw size={16} /> : <Calculator size={16} />}
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-black text-sm text-[#143A5A] leading-tight">
+                                                        <h3 className="font-black text-sm text-foreground leading-tight">
                                                             {activeTab === 'auto' ? `${format(parseISO(selectedMonth + "-01"), "MMMM yyyy", { locale: tr })}` : manualTitle}
                                                         </h3>
-                                                        <p className="text-[10px] text-blue-400 mt-1 uppercase font-bold">
+                                                        <p className="text-[10px] text-primary/60 mt-1 uppercase font-bold">
                                                             {activeTab === 'auto' ? 'Otomatik' : 'Manuel'} • Henüz Kaydedilmedi
                                                         </p>
                                                     </div>
@@ -565,22 +565,22 @@ export default function SettlementPage() {
                                                     size="sm"
                                                     onClick={handleSave}
                                                     disabled={isSaving || (activeTab === 'manual' && !isManualValid)}
-                                                    className="border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl h-8 px-3 font-bold text-[10px]"
+                                                    className="border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground rounded-xl h-8 px-3 font-bold text-[10px] bg-card"
                                                 >
                                                     {isSaving ? <LoaderIcon className="animate-spin" size={14} /> : <><Save size={14} className="mr-1" /> KAYDET</>}
                                                 </Button>
                                             </div>
-                                            <div className="bg-blue-50/50 px-4 py-3 border-t border-blue-100/50 flex gap-2 overflow-x-auto no-scrollbar">
+                                            <div className="bg-primary/5 px-4 py-3 border-t border-primary/10 flex gap-2 overflow-x-auto no-scrollbar">
                                                 {results.slice(0, 3).map((r, i) => (
                                                     <div key={i} className="flex flex-col min-w-[60px]">
-                                                        <span className="text-[9px] font-bold text-blue-800/60 truncate uppercase">{r.userName.split(' ')[0]}</span>
-                                                        <span className={cn("text-[11px] font-black", r.net >= 0 ? "text-emerald-600" : "text-rose-500")}>
+                                                        <span className="text-[9px] font-bold text-primary/60 truncate uppercase">{r.userName.split(' ')[0]}</span>
+                                                        <span className={cn("text-[11px] font-black", r.net >= 0 ? "text-green-500" : "text-red-500")}>
                                                             {r.net > 0 ? '+' : ''}{r.net}₺
                                                         </span>
                                                     </div>
                                                 ))}
                                                 <div className="ml-auto">
-                                                    <ArrowRight size={14} className="text-blue-300" />
+                                                    <ArrowRight size={14} className="text-primary/30" />
                                                 </div>
                                             </div>
                                         </Card>
@@ -597,15 +597,15 @@ export default function SettlementPage() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
                                 >
-                                    <Card className="border-none shadow-sm hover:shadow-md transition-all group overflow-hidden border border-gray-100 flex flex-col h-full">
-                                        <div className="p-4 bg-white flex items-start justify-between flex-1">
+                                    <Card className="border-border shadow-sm hover:shadow-md transition-all group overflow-hidden bg-card flex flex-col h-full">
+                                        <div className="p-4 bg-card flex items-start justify-between flex-1">
                                             <div className="flex gap-3">
-                                                <div className={cn("p-2 rounded-xl h-fit shadow-sm", s.type === 'auto' ? "bg-indigo-50 text-indigo-600" : "bg-amber-50 text-amber-600")}>
+                                                <div className={cn("p-2 rounded-xl h-fit shadow-sm", s.type === 'auto' ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-500")}>
                                                     {s.type === 'auto' ? <RefreshCcw size={16} /> : <Calculator size={16} />}
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-bold text-sm text-gray-900 leading-tight">{s.title}</h3>
-                                                    <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">
+                                                    <h3 className="font-bold text-sm text-foreground leading-tight">{s.title}</h3>
+                                                    <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">
                                                         {s.type === 'auto' ? 'Otomatik' : 'Manuel'} • {new Date(s.date?.seconds * 1000 || s.date).toLocaleDateString('tr-TR')}
                                                     </p>
                                                 </div>
@@ -617,17 +617,17 @@ export default function SettlementPage() {
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
-                                        <div className="bg-gray-50/80 px-4 py-3 border-t border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
+                                        <div className="bg-muted/50 px-4 py-3 border-t border-border flex gap-2 overflow-x-auto no-scrollbar">
                                             {s.results.slice(0, 3).map((r, i) => (
                                                 <div key={i} className="flex flex-col min-w-[60px]">
-                                                    <span className="text-[9px] font-bold text-gray-400 truncate uppercase">{r.userName.split(' ')[0]}</span>
-                                                    <span className={cn("text-[10px] font-black", r.net >= 0 ? "text-green-600" : "text-red-500")}>
+                                                    <span className="text-[9px] font-bold text-muted-foreground truncate uppercase">{r.userName.split(' ')[0]}</span>
+                                                    <span className={cn("text-[10px] font-black", r.net >= 0 ? "text-green-500" : "text-red-500")}>
                                                         {r.net > 0 ? '+' : ''}{r.net}₺
                                                     </span>
                                                 </div>
                                             ))}
                                             {s.results.length > 3 && (
-                                                <div className="flex items-center text-[10px] font-bold text-gray-400 pl-2">+{s.results.length - 3}</div>
+                                                <div className="flex items-center text-[10px] font-bold text-muted-foreground pl-2">+{s.results.length - 3}</div>
                                             )}
                                         </div>
                                     </Card>

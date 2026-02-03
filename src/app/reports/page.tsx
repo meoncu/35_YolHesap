@@ -156,16 +156,16 @@ export default function ReportsPage() {
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Yakıt Raporu</h1>
+                            <h1 className="text-3xl font-black text-foreground tracking-tight">Yakıt Raporu</h1>
                             <div className="flex items-center gap-2 mt-1">
-                                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                                    <ChevronLeft size={20} className="text-gray-400" />
+                                <button onClick={prevMonth} className="p-1 hover:bg-muted rounded-lg transition-colors">
+                                    <ChevronLeft size={20} className="text-muted-foreground" />
                                 </button>
-                                <span className="text-lg font-bold text-blue-600 min-w-[140px] text-center">
+                                <span className="text-lg font-bold text-primary min-w-[140px] text-center">
                                     {format(selectedMonth, "MMMM yyyy", { locale: tr })}
                                 </span>
-                                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                                    <ChevronRight size={20} className="text-gray-400" />
+                                <button onClick={nextMonth} className="p-1 hover:bg-muted rounded-lg transition-colors">
+                                    <ChevronRight size={20} className="text-muted-foreground" />
                                 </button>
                             </div>
                         </div>
@@ -173,7 +173,7 @@ export default function ReportsPage() {
 
                     {/* Fuel Prices Widget */}
                     {fuelPrices && (
-                        <div className="flex items-center gap-2 bg-gradient-to-r from-slate-900 to-slate-800 p-3 rounded-2xl text-white shadow-lg overflow-x-auto">
+                        <div className="flex items-center gap-2 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 p-3 rounded-2xl text-white shadow-lg overflow-x-auto">
                             <div className="flex flex-col px-3 border-r border-slate-700/50">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ANKARA</span>
                                 <span className="text-xs font-medium opacity-60">Fiyatlar (₺)</span>
@@ -198,36 +198,36 @@ export default function ReportsPage() {
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="border-none shadow-sm bg-blue-50">
+                    <Card className="border-border shadow-sm bg-primary/5">
                         <CardContent className="p-6 flex items-center gap-4">
-                            <div className="bg-blue-100 p-3 rounded-2xl text-blue-600">
+                            <div className="bg-primary/10 p-3 rounded-2xl text-primary">
                                 <CalendarDays size={24} strokeWidth={2.5} />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-blue-900/60 uppercase tracking-wider">Toplam Sefer</p>
-                                <h3 className="text-2xl font-black text-blue-900">{filteredTrips.length}</h3>
+                                <p className="text-sm font-bold text-primary/60 uppercase tracking-wider">Toplam Sefer</p>
+                                <h3 className="text-2xl font-black text-foreground">{filteredTrips.length}</h3>
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-none shadow-sm bg-emerald-50">
+                    <Card className="border-border shadow-sm bg-emerald-500/5">
                         <CardContent className="p-6 flex items-center gap-4">
-                            <div className="bg-emerald-100 p-3 rounded-2xl text-emerald-600">
+                            <div className="bg-emerald-500/10 p-3 rounded-2xl text-emerald-500">
                                 <Gauge size={24} strokeWidth={2.5} />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-emerald-900/60 uppercase tracking-wider">Toplam Mesafe</p>
-                                <h3 className="text-2xl font-black text-emerald-900">{totalMonthKm.toFixed(0)} <span className="text-sm font-bold opacity-60">KM</span></h3>
+                                <p className="text-sm font-bold text-emerald-500/60 uppercase tracking-wider">Toplam Mesafe</p>
+                                <h3 className="text-2xl font-black text-foreground">{totalMonthKm.toFixed(0)} <span className="text-sm font-bold opacity-60">KM</span></h3>
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-none shadow-sm bg-indigo-50">
+                    <Card className="border-border shadow-sm bg-indigo-500/5">
                         <CardContent className="p-6 flex items-center gap-4">
-                            <div className="bg-indigo-100 p-3 rounded-2xl text-indigo-600">
+                            <div className="bg-indigo-500/10 p-3 rounded-2xl text-indigo-500">
                                 <Wallet size={24} strokeWidth={2.5} />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-indigo-900/60 uppercase tracking-wider">Tahmini Maliyet</p>
-                                <h3 className="text-2xl font-black text-indigo-900">{totalMonthCost.toFixed(2)} <span className="text-sm font-bold opacity-60">TL</span></h3>
+                                <p className="text-sm font-bold text-indigo-500/60 uppercase tracking-wider">Tahmini Maliyet</p>
+                                <h3 className="text-2xl font-black text-foreground">{totalMonthCost.toFixed(2)} <span className="text-sm font-bold opacity-60">TL</span></h3>
                             </div>
                         </CardContent>
                     </Card>
@@ -235,36 +235,36 @@ export default function ReportsPage() {
 
                 {/* Monthly Driver Breakdown */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 px-1">
-                        <Car size={20} className="text-blue-600" />
+                    <h2 className="text-lg font-black text-foreground flex items-center gap-2 px-1">
+                        <Car size={20} className="text-primary" />
                         Araç Bazlı {format(selectedMonth, "MMMM", { locale: tr })} Özeti
                     </h2>
                     <div className="grid gap-4 md:grid-cols-2">
                         {stats.byDriver.map((driverData: any, idx: number) => (
-                            <div key={idx} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
+                            <div key={idx} className="bg-card p-5 rounded-3xl border border-border shadow-sm flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <Avatar className="h-12 w-12 rounded-2xl">
-                                        <AvatarFallback className="bg-gray-100 text-gray-400 font-bold text-lg">
+                                        <AvatarFallback className="bg-muted text-muted-foreground font-bold text-lg">
                                             {driverData.name.charAt(0)}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <h4 className="font-bold text-gray-900">{driverData.name}</h4>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                        <h4 className="font-bold text-foreground">{driverData.name}</h4>
+                                        <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                             <span>{driverData.plate}</span>
-                                            <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                            <span className="w-1 h-1 rounded-full bg-border" />
                                             <span>{driverData.totalTrips} Gün</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-lg font-black text-gray-900">{driverData.totalCost.toFixed(0)}₺</div>
-                                    <div className="text-xs font-bold text-gray-500">{driverData.totalKm.toFixed(0)} KM</div>
+                                    <div className="text-lg font-black text-foreground">{driverData.totalCost.toFixed(0)}₺</div>
+                                    <div className="text-xs font-bold text-muted-foreground">{driverData.totalKm.toFixed(0)} KM</div>
                                 </div>
                             </div>
                         ))}
                         {stats.byDriver.length === 0 && (
-                            <div className="col-span-2 text-center py-8 text-gray-400 font-medium bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                            <div className="col-span-2 text-center py-8 text-muted-foreground font-medium bg-muted/50 rounded-3xl border border-dashed border-border">
                                 Bu döneme ait veri bulunamadı.
                             </div>
                         )}
@@ -273,43 +273,43 @@ export default function ReportsPage() {
 
                 {/* Daily Detailed List */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 px-1">
-                        <TrendingUp size={20} className="text-blue-600" />
+                    <h2 className="text-lg font-black text-foreground flex items-center gap-2 px-1">
+                        <TrendingUp size={20} className="text-primary" />
                         Günlük Detaylı Döküm
                     </h2>
-                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="bg-card rounded-[2rem] border border-border shadow-sm overflow-hidden">
                         {stats.daily.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                    <thead className="bg-muted/50 border-b border-border">
                                         <tr>
-                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px]">Tarih</th>
-                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px]">Sürücü / Araç</th>
-                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Mesafe</th>
-                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Tüketim</th>
-                                            <th className="px-6 py-4 font-black text-gray-400 uppercase tracking-wider text-[10px] text-right">Maliyet</th>
+                                            <th className="px-6 py-4 font-black text-muted-foreground uppercase tracking-wider text-[10px]">Tarih</th>
+                                            <th className="px-6 py-4 font-black text-muted-foreground uppercase tracking-wider text-[10px]">Sürücü / Araç</th>
+                                            <th className="px-6 py-4 font-black text-muted-foreground uppercase tracking-wider text-[10px] text-right">Mesafe</th>
+                                            <th className="px-6 py-4 font-black text-muted-foreground uppercase tracking-wider text-[10px] text-right">Tüketim</th>
+                                            <th className="px-6 py-4 font-black text-muted-foreground uppercase tracking-wider text-[10px] text-right">Maliyet</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
+                                    <tbody className="divide-y divide-border">
                                         {stats.daily.map((row: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                                                <td className="px-6 py-4 font-bold text-gray-500 whitespace-nowrap">
+                                            <tr key={idx} className="hover:bg-muted/50 transition-colors group">
+                                                <td className="px-6 py-4 font-bold text-muted-foreground whitespace-nowrap">
                                                     {format(parseISO(row.date), "d MMM, EEE", { locale: tr })}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-gray-900">{row.driverName}</span>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{row.plate} • {row.fuelType}</span>
+                                                        <span className="font-bold text-foreground">{row.driverName}</span>
+                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{row.plate} • {row.fuelType}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="font-bold text-gray-700">{row.distance.toFixed(1)} km</div>
+                                                    <div className="font-bold text-muted-foreground">{row.distance.toFixed(1)} km</div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="font-bold text-gray-500">{row.litersConsumed.toFixed(1)} lt</div>
+                                                    <div className="font-bold text-muted-foreground">{row.litersConsumed.toFixed(1)} lt</div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="font-black text-[#1E293B] bg-blue-50/50 px-3 py-1 rounded-lg inline-block group-hover:bg-blue-100 transition-colors">
+                                                    <div className="font-black text-foreground bg-primary/5 px-3 py-1 rounded-lg inline-block group-hover:bg-primary/10 transition-colors">
                                                         {row.cost.toFixed(2)} ₺
                                                     </div>
                                                 </td>
@@ -319,7 +319,7 @@ export default function ReportsPage() {
                                 </table>
                             </div>
                         ) : (
-                            <div className="py-20 text-center text-gray-400 font-medium">
+                            <div className="py-20 text-center text-muted-foreground font-medium">
                                 Hiç sefer kaydı bulunamadı.
                             </div>
                         )}
@@ -327,11 +327,11 @@ export default function ReportsPage() {
                 </div>
                 {/* Yearly/Monthly Overview */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 px-1">
-                        <CalendarDays size={20} className="text-blue-600" />
+                    <h2 className="text-lg font-black text-foreground flex items-center gap-2 px-1">
+                        <CalendarDays size={20} className="text-primary" />
                         Yıllık-Aylık Özet ({format(selectedMonth, "yyyy")})
                     </h2>
-                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden p-6">
+                    <div className="bg-card rounded-[2rem] border border-border shadow-sm overflow-hidden p-6">
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                             {Array.from({ length: 12 }).map((_, i) => {
                                 const monthDate = new Date(selectedMonth.getFullYear(), i, 1);
@@ -350,11 +350,11 @@ export default function ReportsPage() {
                                         className={cn(
                                             "p-4 rounded-2xl border transition-all text-center group",
                                             isCurrent
-                                                ? "bg-blue-600 border-blue-600 text-white shadow-lg"
-                                                : "bg-gray-50 border-gray-100 hover:border-blue-200 text-gray-600"
+                                                ? "bg-primary border-primary text-primary-foreground shadow-lg"
+                                                : "bg-muted/50 border-border hover:border-primary/50 text-muted-foreground"
                                         )}
                                     >
-                                        <div className={cn("text-[10px] font-bold uppercase tracking-widest mb-1", isCurrent ? "text-blue-100" : "text-gray-400 group-hover:text-blue-400")}>
+                                        <div className={cn("text-[10px] font-bold uppercase tracking-widest mb-1", isCurrent ? "text-primary-foreground/70" : "text-muted-foreground/60 group-hover:text-primary")}>
                                             {format(monthDate, "MMMM", { locale: tr })}
                                         </div>
                                         <div className="text-lg font-black tracking-tight">{monthKm} <span className="text-[10px] font-bold">KM</span></div>

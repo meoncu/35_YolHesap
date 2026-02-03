@@ -154,13 +154,13 @@ export default function CalendarPage() {
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Yolculuk Takvimi</h1>
-                        <p className="text-gray-500">Günlük katılımı ve şoförü yönetin.</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Yolculuk Takvimi</h1>
+                        <p className="text-muted-foreground">Günlük katılımı ve şoförü yönetin.</p>
                     </div>
                 </header>
 
                 <div className="flex flex-col md:flex-row gap-6 items-start">
-                    <Card className="border-none shadow-md bg-white p-2 w-full md:w-auto shrink-0">
+                    <Card className="border-border shadow-md bg-card p-2 w-full md:w-auto shrink-0">
                         <Calendar
                             mode="single"
                             selected={date}
@@ -171,7 +171,7 @@ export default function CalendarPage() {
                     </Card>
 
                     <section className="space-y-3 flex-1 w-full">
-                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest pl-1">Seçili Gün Özeti</h3>
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Seçili Gün Özeti</h3>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={date?.toString()}
@@ -179,37 +179,37 @@ export default function CalendarPage() {
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
                             >
-                                <Card className="border-none shadow-sm overflow-hidden h-full">
-                                    <CardHeader className="bg-gray-50 flex flex-row items-center justify-between space-y-0 py-3">
-                                        <span className="text-sm font-semibold">{date ? format(date, "d MMMM yyyy, EEEE", { locale: tr }) : "Gün seçiniz"}</span>
-                                        <CalendarIcon size={16} className="text-[#143A5A]" />
+                                <Card className="border-border shadow-sm overflow-hidden h-full bg-card">
+                                    <CardHeader className="bg-muted flex flex-row items-center justify-between space-y-0 py-3">
+                                        <span className="text-sm font-semibold text-foreground">{date ? format(date, "d MMMM yyyy, EEEE", { locale: tr }) : "Gün seçiniz"}</span>
+                                        <CalendarIcon size={16} className="text-primary" />
                                     </CardHeader>
                                     <CardContent className="pt-4">
                                         {loading ? (
                                             <div className="flex justify-center py-6">
-                                                <Loader2 className="h-6 w-6 animate-spin text-[#143A5A]" />
+                                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
                                             </div>
                                         ) : currentTrip ? (
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-[#143A5A]">
+                                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                                         <Car size={20} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Şoför</p>
-                                                        <p className="font-semibold text-gray-900">
+                                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Şoför</p>
+                                                        <p className="font-semibold text-foreground">
                                                             {members.find(m => m.uid === currentTrip.driverUid)?.name || "Bilinmiyor"}
                                                         </p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                                    <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
                                                         <Users size={20} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Katılımcılar</p>
-                                                        <p className="text-sm text-gray-700">
+                                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Katılımcılar</p>
+                                                        <p className="text-sm text-foreground">
                                                             {currentTrip.participants.length > 0
                                                                 ? currentTrip.participants.map(p => members.find(m => m.uid === p)?.name).filter(Boolean).join(", ")
                                                                 : "Kimse katılmadı"}
@@ -228,14 +228,14 @@ export default function CalendarPage() {
                                             </div>
                                         ) : (
                                             <div className="text-center py-6">
-                                                <div className="flex justify-center mb-2 text-gray-300">
+                                                <div className="flex justify-center mb-2 text-muted-foreground/30">
                                                     <Info size={40} />
                                                 </div>
-                                                <p className="text-gray-500 text-sm">Bu gün için henüz kayıt girilmemiş.</p>
+                                                <p className="text-muted-foreground text-sm">Bu gün için henüz kayıt girilmemiş.</p>
                                                 {profile?.role === 'admin' && (
                                                     <Button
                                                         onClick={() => setIsDialogOpen(true)}
-                                                        className="mt-4 bg-[#143A5A]"
+                                                        className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
                                                     >
                                                         Kayıt Ekle
                                                     </Button>
@@ -250,9 +250,9 @@ export default function CalendarPage() {
                 </div>
 
                 {/* Monthly Trip List (Moved from Dashboard) */}
-                <section className="space-y-3 pt-4 border-t border-gray-100">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest pl-1">Yolculuk Günlüğü ({date ? format(date, "MMMM", { locale: tr }) : "Seçili Ay"})</h3>
-                    <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-xl shadow-blue-900/5 overflow-hidden">
+                <section className="space-y-3 pt-4 border-t border-border">
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Yolculuk Günlüğü ({date ? format(date, "MMMM", { locale: tr }) : "Seçili Ay"})</h3>
+                    <div className="bg-card border border-border rounded-[2.5rem] shadow-xl shadow-primary/5 overflow-hidden">
                         <div className="max-h-[500px] overflow-y-auto custom-scrollbar p-4 space-y-3">
                             {date && eachDayOfInterval({
                                 start: startOfMonth(date),
@@ -271,22 +271,22 @@ export default function CalendarPage() {
                                         onClick={() => setDate(day)}
                                         className={cn(
                                             "flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-3xl transition-all border cursor-pointer",
-                                            isSelected ? "bg-blue-50 border-blue-200 shadow-md ring-1 ring-blue-200" :
-                                                isToday ? "bg-green-50 border-green-200" : "bg-gray-50/30 border-gray-100 hover:border-blue-100/50"
+                                            isSelected ? "bg-primary/10 border-primary shadow-md ring-1 ring-primary/20" :
+                                                isToday ? "bg-green-500/10 border-green-500/50" : "bg-muted/50 border-border hover:border-primary/30"
                                         )}
                                     >
                                         {/* Date Part */}
                                         <div className="flex items-center gap-3 min-w-[140px]">
                                             <div className={cn(
                                                 "w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black",
-                                                isSelected ? "bg-blue-600 text-white" : isToday ? "bg-green-600 text-white" : "bg-white text-gray-500 shadow-sm"
+                                                isSelected ? "bg-primary text-primary-foreground" : isToday ? "bg-green-500 text-white" : "bg-card text-muted-foreground shadow-sm"
                                             )}>
                                                 <span className="text-[10px] uppercase opacity-60 leading-none mb-0.5">{format(day, "EEE", { locale: tr })}</span>
                                                 <span className="text-base leading-none">{format(day, "d")}</span>
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{format(day, "MMMM", { locale: tr })}</span>
-                                                <span className="text-xs font-black text-[#1E293B] leading-none">{isToday ? "BUGÜN" : format(day, "EEEE", { locale: tr })}</span>
+                                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">{format(day, "MMMM", { locale: tr })}</span>
+                                                <span className="text-xs font-black text-foreground leading-none">{isToday ? "BUGÜN" : format(day, "EEEE", { locale: tr })}</span>
                                             </div>
                                         </div>
 
@@ -296,18 +296,18 @@ export default function CalendarPage() {
                                                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     {/* Driver & Participants */}
                                                     <div className="flex items-center gap-3">
-                                                        <div className="bg-amber-100 p-2 rounded-xl text-amber-600"><Car size={16} /></div>
+                                                        <div className="bg-amber-500/10 p-2 rounded-xl text-amber-500"><Car size={16} /></div>
                                                         <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-amber-700/50 uppercase tracking-widest">SÜRÜCÜ</span>
-                                                            <span className="text-xs font-black text-amber-900 tracking-tight leading-none">{tripDriver?.name || "Bilinmiyor"}</span>
+                                                            <span className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">SÜRÜCÜ</span>
+                                                            <span className="text-xs font-black text-amber-600 dark:text-amber-500 tracking-tight leading-none">{tripDriver?.name || "Bilinmiyor"}</span>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex items-center gap-3">
-                                                        <div className="bg-blue-100 p-2 rounded-xl text-blue-600"><Users size={16} /></div>
+                                                        <div className="bg-primary/10 p-2 rounded-xl text-primary"><Users size={16} /></div>
                                                         <div className="flex flex-col overflow-hidden">
-                                                            <span className="text-[9px] font-black text-blue-700/50 uppercase tracking-widest">KATILIMCILAR</span>
-                                                            <span className="text-xs font-bold text-blue-900 truncate tracking-tight leading-none">
+                                                            <span className="text-[9px] font-black text-primary/50 uppercase tracking-widest">KATILIMCILAR</span>
+                                                            <span className="text-xs font-bold text-foreground truncate tracking-tight leading-none">
                                                                 {tripParticipants.map(p => p.name).join(", ")}
                                                             </span>
                                                         </div>
@@ -315,8 +315,8 @@ export default function CalendarPage() {
                                                 </div>
                                             ) : (
                                                 <div className="flex-1 flex items-center gap-2 opacity-30 italic">
-                                                    <div className="h-1 w-1 rounded-full bg-gray-400" />
-                                                    <span className="text-xs font-bold text-gray-400">Yolculuk kaydı yok.</span>
+                                                    <div className="h-1 w-1 rounded-full bg-muted-foreground" />
+                                                    <span className="text-xs font-bold text-muted-foreground">Yolculuk kaydı yok.</span>
                                                 </div>
                                             )}
                                         </div>
@@ -340,7 +340,7 @@ export default function CalendarPage() {
                         <div className="grid gap-6 py-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-gray-600 uppercase">Yolculuk Tipi</label>
+                                    <label className="text-sm font-bold text-muted-foreground uppercase">Yolculuk Tipi</label>
                                     <Select value={tripType} onValueChange={(v: any) => setTripType(v)}>
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Seçiniz" />
@@ -353,7 +353,7 @@ export default function CalendarPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-gray-600 uppercase">Günün Şoförü</label>
+                                    <label className="text-sm font-bold text-muted-foreground uppercase">Günün Şoförü</label>
                                     <Select value={driver} onValueChange={setDriver}>
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Şoför seçin" />
@@ -370,8 +370,8 @@ export default function CalendarPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-bold text-gray-600 uppercase">Katılan Üyeler</label>
-                                <div className="grid grid-cols-1 gap-2 border rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto">
+                                <label className="text-sm font-bold text-muted-foreground uppercase">Katılan Üyeler</label>
+                                <div className="grid grid-cols-1 gap-2 border border-border rounded-lg p-3 bg-muted/50 max-h-48 overflow-y-auto">
                                     {members.map(member => (
                                         <div key={member.uid} className="flex items-center space-x-3 p-1">
                                             <Checkbox
@@ -390,14 +390,14 @@ export default function CalendarPage() {
                                 </div>
                             </div>
 
-                            <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between">
+                            <div className="p-3 bg-primary/5 border border-primary/10 rounded-lg flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs text-blue-600 font-bold uppercase">Tahmini Kazanç (Şoför)</p>
-                                    <p className="text-lg font-bold text-[#143A5A]">₺{participants.length * dailyFee}</p>
+                                    <p className="text-xs text-primary font-bold uppercase">Tahmini Kazanç (Şoför)</p>
+                                    <p className="text-lg font-bold text-foreground">₺{participants.length * dailyFee}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs text-blue-600 font-bold uppercase">Kişi Başı</p>
-                                    <p className="text-lg font-bold text-[#143A5A]">₺{dailyFee}</p>
+                                    <p className="text-xs text-primary font-bold uppercase">Kişi Başı</p>
+                                    <p className="text-lg font-bold text-foreground">₺{dailyFee}</p>
                                 </div>
                             </div>
                         </div>

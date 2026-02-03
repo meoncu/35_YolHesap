@@ -183,8 +183,8 @@ export default function MapPage() {
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Güzergâh & Trafik</h1>
-                            <p className="text-gray-500">
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">Güzergâh & Trafik</h1>
+                            <p className="text-muted-foreground">
                                 {routeConfig.mode === "morning" ? "Sabah trafiği ve rota durumu." : "Akşam trafiği ve dönüş rotası."}
                             </p>
                         </div>
@@ -192,7 +192,7 @@ export default function MapPage() {
                     <Button
                         size="sm"
                         variant={showTraffic ? "default" : "outline"}
-                        className={showTraffic ? "bg-[#1F5E8C]" : ""}
+                        className={showTraffic ? "bg-primary text-primary-foreground" : ""}
                         onClick={() => setShowTraffic(!showTraffic)}
                     >
                         <Layers size={18} className="mr-2" />
@@ -200,7 +200,7 @@ export default function MapPage() {
                     </Button>
                 </header>
 
-                <Card className="border-none shadow-md overflow-hidden relative">
+                <Card className="border-border shadow-md overflow-hidden relative bg-card">
                     {isLoaded ? (
                         <GoogleMap
                             mapContainerStyle={containerStyle}
@@ -294,23 +294,23 @@ export default function MapPage() {
                             )}
                         </GoogleMap>
                     ) : (
-                        <div className="flex items-center justify-center h-[70vh] bg-gray-100">
+                        <div className="flex items-center justify-center h-[70vh] bg-muted/50">
                             <div className="flex flex-col items-center gap-2">
-                                <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#143A5A] border-t-transparent"></div>
-                                <p className="text-sm text-gray-500 font-medium">Harita yükleniyor...</p>
+                                <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                                <p className="text-sm text-muted-foreground font-medium">Harita yükleniyor...</p>
                             </div>
                         </div>
                     )}
                 </Card>
 
                 {/* Legend / Info */}
-                <section className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-start gap-3">
-                    <div className={cn("p-2 rounded-lg shrink-0", routeConfig.mode === "morning" ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600")}>
+                <section className="bg-card p-4 rounded-xl border border-border shadow-sm flex items-start gap-3">
+                    <div className={cn("p-2 rounded-lg shrink-0", routeConfig.mode === "morning" ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-500")}>
                         {routeConfig.mode === "morning" ? <Info size={20} /> : <Navigation size={20} />}
                     </div>
                     <div>
-                        <h4 className="text-sm font-bold text-gray-900">{routeConfig.label} ({format(new Date(), "HH:mm")})</h4>
-                        <p className="text-xs text-gray-500 leading-tight mb-2">
+                        <h4 className="text-sm font-bold text-foreground">{routeConfig.label} ({format(new Date(), "HH:mm")})</h4>
+                        <p className="text-xs text-muted-foreground leading-tight mb-2">
                             {routeConfig.desc}
                         </p>
                         {userLocation && (
@@ -321,13 +321,13 @@ export default function MapPage() {
                         )}
                         {routeStats && (
                             <div className="flex items-center gap-4 mt-2">
-                                <div className="bg-green-50 px-3 py-1 rounded-lg border border-green-100">
-                                    <span className="text-[10px] uppercase font-bold text-green-600 block">Mesafe</span>
-                                    <span className="text-sm font-black text-green-900">{routeStats.distance}</span>
+                                <div className="bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">
+                                    <span className="text-[10px] uppercase font-bold text-green-600 dark:text-green-400 block">Mesafe</span>
+                                    <span className="text-sm font-black text-green-900 dark:text-green-100">{routeStats.distance}</span>
                                 </div>
-                                <div className="bg-amber-50 px-3 py-1 rounded-lg border border-amber-100">
-                                    <span className="text-[10px] uppercase font-bold text-amber-600 block">Süre (Tahmini)</span>
-                                    <span className="text-sm font-black text-amber-900">{routeStats.duration}</span>
+                                <div className="bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">
+                                    <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block">Süre (Tahmini)</span>
+                                    <span className="text-sm font-black text-amber-900 dark:text-amber-100">{routeStats.duration}</span>
                                 </div>
                             </div>
                         )}

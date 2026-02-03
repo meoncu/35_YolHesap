@@ -92,22 +92,22 @@ export default function ProfilePage() {
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Profil Ayarları</h1>
-                        <p className="text-gray-500">Kişisel bilgilerinizi ve avatarınızı yönetin.</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Profil Ayarları</h1>
+                        <p className="text-muted-foreground">Kişisel bilgilerinizi ve avatarınızı yönetin.</p>
                     </div>
                 </header>
 
-                <Card className="border-none shadow-md overflow-hidden bg-white">
-                    <CardHeader className="bg-gray-50/50 border-b pb-8">
+                <Card className="border-border shadow-md overflow-hidden bg-card">
+                    <CardHeader className="bg-muted/50 border-b border-border pb-8">
                         <div className="flex flex-col items-center space-y-4">
                             <div className="relative">
-                                <Avatar className="h-28 w-28 border-4 border-white shadow-xl">
+                                <Avatar className="h-28 w-28 border-4 border-card shadow-xl">
                                     <AvatarImage src={formData.photoURL} alt={formData.name} />
-                                    <AvatarFallback className="text-3xl font-bold bg-blue-50 text-[#143A5A]">
+                                    <AvatarFallback className="text-3xl font-bold bg-primary/10 text-primary">
                                         {formData.name?.charAt(0) || "U"}
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="absolute bottom-0 right-0 p-1.5 bg-[#143A5A] rounded-full text-white border-2 border-white shadow-lg">
+                                <div className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-primary-foreground border-2 border-card shadow-lg">
                                     <Camera size={16} />
                                 </div>
                             </div>
@@ -120,7 +120,7 @@ export default function ProfilePage() {
                     <CardContent className="pt-8 space-y-8">
                         {/* Avatar Selection */}
                         <div className="space-y-4">
-                            <Label className="text-sm font-bold text-gray-600 uppercase tracking-wider">Avatar Seçin</Label>
+                            <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Avatar Seçin</Label>
                             <div className="grid grid-cols-5 gap-3">
                                 {AVATARS.map((url) => (
                                     <button
@@ -128,13 +128,13 @@ export default function ProfilePage() {
                                         onClick={() => setFormData(prev => ({ ...prev, photoURL: url }))}
                                         className={cn(
                                             "relative rounded-xl overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 shadow-sm",
-                                            formData.photoURL === url ? "border-[#143A5A] ring-2 ring-[#143A5A]/20" : "border-transparent bg-gray-50"
+                                            formData.photoURL === url ? "border-primary ring-2 ring-primary/20" : "border-transparent bg-muted"
                                         )}
                                     >
                                         <img src={url} alt="Avatar Option" className="w-full h-full object-cover" />
                                         {formData.photoURL === url && (
-                                            <div className="absolute inset-0 bg-[#143A5A]/10 flex items-center justify-center">
-                                                <div className="bg-[#143A5A] p-0.5 rounded-full text-white">
+                                            <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                                                <div className="bg-primary p-0.5 rounded-full text-primary-foreground">
                                                     <Check size={12} />
                                                 </div>
                                             </div>
@@ -167,7 +167,7 @@ export default function ProfilePage() {
                         </div>
 
                         <Button
-                            className="w-full gradient-primary h-12 text-lg shadow-lg flex items-center gap-2"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-lg shadow-lg flex items-center gap-2"
                             onClick={handleSave}
                             disabled={loading}
                         >

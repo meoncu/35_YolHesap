@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,7 +99,7 @@ export default function Dashboard() {
 
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [settings, setSettings] = useState<AppSettings>({ dailyFee: 100 });
-  const [isDarkMode, setIsDarkMode] = useState(false); // Dark Mode State
+  const { isDarkMode, toggleDarkMode } = useTheme();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -111,11 +112,8 @@ export default function Dashboard() {
   const isNightTime = timeStr >= "18:00" || timeStr < "06:00";
 
   useEffect(() => {
-    if (isNightTime) setIsDarkMode(true);
-    else setIsDarkMode(false);
+    // Logic for auto switching could be added here if desired.
   }, [isNightTime]);
-
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
   const weatherForecast = useMemo(() => {
     const types = ['sunny', 'cloudy', 'rainy', 'snowy'] as const;
@@ -280,23 +278,23 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <div className={cn("relative space-y-8 px-2 pb-32 transition-all duration-1000 min-h-screen", isDarkMode ? "bg-slate-900 text-white" : "bg-transparent", isEvening ? "bg-gradient-to-b from-indigo-900/50 to-slate-900" : "")}>
+      <div className={cn("relative space-y-8 px-2 pb-32 transition-all duration-300 min-h-screen", isEvening && !isDarkMode ? "bg-gradient-to-b from-indigo-900/10 to-transparent" : "")}>
 
         {/* Header Section */}
         <section className="flex flex-col gap-6 pt-0">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 group">
-                <div className="relative p-2 rounded-2xl bg-white border border-gray-100 shadow-sm dark:bg-slate-800 dark:border-slate-700">
-                  <Gauge size={24} className="text-blue-600 dark:text-blue-400" strokeWidth={2.5} />
+                <div className="relative p-2 rounded-2xl bg-card border border-border shadow-sm">
+                  <Gauge size={24} className="text-primary" strokeWidth={2.5} />
                 </div>
-                <h1 className={cn("text-2xl font-black italic tracking-tighter transform -skew-x-6", isDarkMode ? "text-white" : "text-slate-900")}>
-                  YOL<span className="text-blue-600">TAKİP</span>
+                <h1 className="text-2xl font-black italic tracking-tighter transform -skew-x-6 text-foreground">
+                  YOL<span className="text-primary">TAKİP</span>
                 </h1>
               </div>
               <div>
-                <h2 className={cn("text-3xl font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Merhaba, {profile?.name?.split(' ')[0]} 👋</h2>
-                <p className={cn("text-sm font-medium mt-1 uppercase tracking-widest opacity-60", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                <h2 className="text-3xl font-black tracking-tight text-foreground">Merhaba, {profile?.name?.split(' ')[0]} 👋</h2>
+                <p className="text-sm font-medium mt-1 uppercase tracking-widest text-muted-foreground">
                   {format(currentTime, "d MMMM yyyy, EEEE", { locale: tr })}
                 </p>
               </div>
@@ -304,13 +302,13 @@ export default function Dashboard() {
 
             {/* Middle Section: Clock and Profile Actions */}
             <div className="flex flex-col items-center gap-2 mb-1">
-              <div className="flex items-center gap-3 p-2 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-white/50 dark:border-slate-700/50 shadow-sm">
-                <div className="flex items-center gap-2 pl-2 pr-1 border-r border-gray-200 dark:border-slate-700">
-                  <span className="text-sm font-black text-blue-600 dark:text-blue-400 font-mono tracking-wider">{format(currentTime, "HH:mm:ss")}</span>
+              <div className="flex items-center gap-3 p-2 bg-card/50 backdrop-blur-sm rounded-3xl border border-border shadow-sm">
+                <div className="flex items-center gap-2 pl-2 pr-1 border-r border-border">
+                  <span className="text-sm font-black text-primary font-mono tracking-wider">{format(currentTime, "HH:mm:ss")}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button onClick={toggleDarkMode} variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white dark:hover:bg-slate-700 transition-all">
-                    <Moon size={16} className={isDarkMode ? "text-yellow-400" : "text-gray-400"} fill="currentColor" />
+                  <Button onClick={toggleDarkMode} variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted transition-all">
+                    {isDarkMode ? <Sun size={16} className="text-yellow-400" fill="currentColor" /> : <Moon size={16} className="text-gray-400" fill="currentColor" />}
                   </Button>
 
                   {/* PWA Install Button */}
@@ -319,7 +317,7 @@ export default function Dashboard() {
                       onClick={handleInstallApp}
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all animate-bounce"
+                      className="h-8 w-8 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all animate-bounce"
                       title="Ana Ekrana Ekle"
                     >
                       <Smartphone size={16} strokeWidth={2.5} />
@@ -329,19 +327,19 @@ export default function Dashboard() {
                   {user && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 rounded-full p-0 border-2 border-white dark:border-slate-600 shadow-sm overflow-hidden relative">
+                        <Button variant="ghost" className="h-8 w-8 rounded-full p-0 border-2 border-border shadow-sm overflow-hidden relative">
                           <Avatar className="h-full w-full">
                             <AvatarImage src={user.photoURL || ""} />
                             <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
                           </Avatar>
                           {profile?.role === 'admin' && (
-                            <div className="absolute -top-1 -right-1 bg-indigo-600 text-white p-0.5 rounded-full border border-white scale-75">
+                            <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground p-0.5 rounded-full border border-background scale-75">
                               <Shield size={10} strokeWidth={3} />
                             </div>
                           )}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56 rounded-2xl" align="center">
+                      <DropdownMenuContent className="w-56 rounded-2xl bg-card border-border" align="center">
                         <DropdownMenuItem asChild><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Yönetici Paneli</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link href="/profile"><User className="mr-2 h-4 w-4" /> Profil Ayarları</Link></DropdownMenuItem>
                         <DropdownMenuItem onClick={logout} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /> Çıkış Yap</DropdownMenuItem>
@@ -350,7 +348,7 @@ export default function Dashboard() {
                   )}
                   {profile?.role === 'admin' && (
                     <Link href="/admin">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 transition-all ml-1" title="Hızlı Yönetici Girişi">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all ml-1" title="Hızlı Yönetici Girişi">
                         <Shield size={16} strokeWidth={2.5} />
                       </Button>
                     </Link>
@@ -360,10 +358,10 @@ export default function Dashboard() {
             </div>
 
             {fuelPrices && (
-              <div className={cn("flex items-center gap-4 p-4 rounded-[2rem] border shadow-lg shadow-blue-900/5", isDarkMode ? "bg-slate-800/80 border-slate-700" : "bg-white border-gray-100")}>
-                <div className="flex flex-col pr-4 border-r border-gray-100/10">
-                  <span className="text-[10px] font-black text-blue-500 uppercase">Ankara</span>
-                  <span className="text-xs font-bold text-gray-500 underline decoration-blue-500/30">Yakıt</span>
+              <div className="flex items-center gap-4 p-4 rounded-[2rem] border shadow-lg shadow-blue-900/5 bg-card border-border">
+                <div className="flex flex-col pr-4 border-r border-border">
+                  <span className="text-[10px] font-black text-primary uppercase">Ankara</span>
+                  <span className="text-xs font-bold text-muted-foreground underline decoration-primary/30">Yakıt</span>
                 </div>
                 <div className="flex items-center gap-6">
                   {[
@@ -373,7 +371,7 @@ export default function Dashboard() {
                   ].map((fuel) => (
                     <div key={fuel.label} className="flex flex-col">
                       <span className={cn("text-[9px] font-black uppercase", fuel.color)}>{fuel.label}</span>
-                      <span className="text-base font-black tracking-tighter">
+                      <span className="text-base font-black tracking-tighter text-foreground">
                         ₺{fuelPrices[fuel.key]?.toFixed(2) || "0.00"}
                       </span>
                     </div>
@@ -384,36 +382,34 @@ export default function Dashboard() {
           </div>
 
           {/* Namaz Widget */}
-          <div className={cn("hidden xl:flex items-center justify-center p-2 rounded-2xl border backdrop-blur-md h-[72px]", isDarkMode ? "bg-slate-800/80 border-slate-700" : "bg-white/60 border-white/50 shadow-sm")}>
+          <div className="hidden xl:flex items-center justify-center p-2 rounded-2xl border backdrop-blur-md h-[72px] bg-card/60 border-border shadow-sm">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 pr-4 border-r border-gray-100 opacity-80">
+              <div className="flex items-center gap-2 pr-4 border-r border-border opacity-80">
                 <Moon size={14} className="text-emerald-500" />
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold uppercase opacity-60">Namaz Vakti</span>
-                  <span className="text-[10px] font-black">Ankara</span>
+                  <span className="text-[9px] font-bold uppercase text-muted-foreground">Namaz Vakti</span>
+                  <span className="text-[10px] font-black text-foreground">Ankara</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 {[{ n: 'İmsak', t: '06:28' }, { n: 'Güneş', t: '07:53' }, { n: 'Öğle', t: '13:08' }, { n: 'İkindi', t: '15:53' }, { n: 'Akşam', t: '18:12' }, { n: 'Yatsı', t: '19:32' }].map((v, i) => (
-                  <div key={v.n} className={cn("flex flex-col items-center px-2 py-1 rounded-lg", i === 4 ? "bg-emerald-50 ring-1 ring-emerald-100" : "")}>
-                    <span className="text-[8px] font-bold uppercase opacity-50">{v.n}</span>
-                    <span className={cn("text-[10px] font-black", i === 4 ? "text-emerald-700" : isDarkMode ? "text-slate-200" : "text-gray-700")}>{v.t}</span>
+                  <div key={v.n} className={cn("flex flex-col items-center px-2 py-1 rounded-lg", i === 4 ? "bg-emerald-50 dark:bg-emerald-900/20 ring-1 ring-emerald-100 dark:ring-emerald-800" : "")}>
+                    <span className="text-[8px] font-bold uppercase text-muted-foreground">{v.n}</span>
+                    <span className={cn("text-[10px] font-black", i === 4 ? "text-emerald-700 dark:text-emerald-400" : "text-foreground")}>{v.t}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-
-
           {/* Weather Forecast */}
-          <div className={cn("w-full backdrop-blur-md rounded-2xl border p-3 overflow-x-auto", isDarkMode ? "bg-slate-800/80 border-slate-700" : "bg-white/60 border-white/50 shadow-sm")}>
+          <div className="w-full backdrop-blur-md rounded-2xl border p-3 overflow-x-auto bg-card/60 border-border shadow-sm">
             <div className="flex justify-between items-center min-w-max gap-2 w-full">
               {weatherForecast.map((day, i) => (
-                <div key={i} className={cn("flex flex-col items-center justify-center gap-1 flex-1 p-2 rounded-xl", i === 0 ? "bg-blue-50/80 ring-1 ring-blue-100" : "hover:bg-gray-50/50")}>
-                  <span className="text-[9px] font-bold text-gray-400 uppercase">{i === 0 ? "Bugün" : format(day.date, "EEE", { locale: tr })}</span>
+                <div key={i} className={cn("flex flex-col items-center justify-center gap-1 flex-1 p-2 rounded-xl", i === 0 ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-muted/50")}>
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase">{i === 0 ? "Bugün" : format(day.date, "EEE", { locale: tr })}</span>
                   {getWeatherIcon(day.type)}
-                  <span className="text-[10px] font-black text-gray-700">{day.tempDay}°</span>
+                  <span className="text-[10px] font-black text-foreground">{day.tempDay}°</span>
                 </div>
               ))}
             </div>
@@ -425,50 +421,50 @@ export default function Dashboard() {
           {/* Trip Summary */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <div className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><TrendingUp size={16} strokeWidth={3} /></div>
-              <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Bugünün Yolculuğu</h2>
+              <div className="bg-primary/10 p-1.5 rounded-lg text-primary"><TrendingUp size={16} strokeWidth={3} /></div>
+              <h2 className="text-base font-black tracking-tight text-foreground">Bugünün Yolculuğu</h2>
             </div>
-            <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[2.5rem] overflow-hidden">
+            <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[2.5rem] overflow-hidden bg-card">
               {todayTrip ? (
                 <div className="p-6 flex flex-col md:flex-row gap-6 items-center">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex flex-col items-center justify-center font-black">
+                    <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex flex-col items-center justify-center font-black">
                       <span className="text-[10px] uppercase opacity-70">{format(new Date(), "EEE", { locale: tr })}</span>
                       <span className="text-xl">{format(new Date(), "d")}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{format(new Date(), "MMMM", { locale: tr })}</span>
-                      <h3 className="text-sm font-black text-blue-900">BUGÜN</h3>
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">{format(new Date(), "MMMM", { locale: tr })}</span>
+                      <h3 className="text-sm font-black text-primary">BUGÜN</h3>
                     </div>
                   </div>
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100/50 flex items-center gap-3">
+                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100/50 dark:border-amber-800/30 flex items-center gap-3">
                       <Car size={20} className="text-amber-600" />
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-amber-700/50 uppercase">ŞÖFÖR</span>
-                        <span className="text-sm font-black text-amber-900">{members.find(m => m.uid === todayTrip.driverUid)?.name || "Bilinmiyor"}</span>
+                        <span className="text-[9px] font-black text-amber-700/50 dark:text-amber-500/50 uppercase">ŞÖFÖR</span>
+                        <span className="text-sm font-black text-amber-900 dark:text-amber-100">{members.find(m => m.uid === todayTrip.driverUid)?.name || "Bilinmiyor"}</span>
                       </div>
                     </div>
-                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100/50 flex items-center gap-3">
-                      <Users size={20} className="text-blue-600" />
+                    <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex items-center gap-3">
+                      <Users size={20} className="text-primary" />
                       <div className="flex flex-col truncate">
-                        <span className="text-[9px] font-black text-blue-700/50 uppercase">YOLCULAR</span>
-                        <span className="text-sm font-bold text-blue-900 truncate">
+                        <span className="text-[9px] font-black text-primary/50 uppercase">YOLCULAR</span>
+                        <span className="text-sm font-bold text-foreground truncate">
                           {todayTrip.participants?.map((id: string) => members.find(m => m.uid === id)?.name).filter(Boolean).join(", ")}
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 w-full md:w-auto">
-                    <Button onClick={() => setIsSeatingPlanOpen(true)} className="flex-1 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100 font-bold uppercase text-[10px] tracking-widest px-4">Oturma Planı</Button>
-                    <Button onClick={() => setIsDriverDialogOpen(true)} className="flex-1 rounded-xl bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100 font-bold uppercase text-[10px] tracking-widest px-4">Düzenle</Button>
+                    <Button onClick={() => setIsSeatingPlanOpen(true)} className="flex-1 rounded-xl bg-secondary text-secondary-foreground border border-border hover:bg-muted font-bold uppercase text-[10px] tracking-widest px-4">Oturma Planı</Button>
+                    <Button onClick={() => setIsDriverDialogOpen(true)} className="flex-1 rounded-xl bg-secondary text-secondary-foreground border border-border hover:bg-muted font-bold uppercase text-[10px] tracking-widest px-4">Düzenle</Button>
                   </div>
                 </div>
               ) : (
                 <div className="p-8 text-center flex flex-col items-center gap-4">
-                  <Info size={32} className="text-gray-300" />
-                  <p className="text-sm font-bold text-gray-500">Henüz yolculuk planlanmamış.</p>
-                  <Button onClick={() => setIsDriverDialogOpen(true)} variant="outline" className="rounded-xl">Şimdi Planla</Button>
+                  <Info size={32} className="text-muted-foreground" />
+                  <p className="text-sm font-bold text-muted-foreground">Henüz yolculuk planlanmamış.</p>
+                  <Button onClick={() => setIsDriverDialogOpen(true)} variant="outline" className="rounded-xl border-border text-foreground hover:bg-muted">Şimdi Planla</Button>
                 </div>
               )}
             </Card>
@@ -478,22 +474,22 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Plus size={16} strokeWidth={3} /></div>
-                <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Hızlı İşlemler</h2>
+                <div className="bg-primary/10 p-1.5 rounded-lg text-primary"><Plus size={16} strokeWidth={3} /></div>
+                <h2 className="text-base font-black tracking-tight text-foreground">Hızlı İşlemler</h2>
               </div>
               <div className="grid gap-3">
                 {[
-                  { t: "Takvim", i: CalendarIcon, c: "text-blue-600", b: "bg-blue-50", h: "/calendar" },
-                  { t: "Grup", i: Users, c: "text-indigo-600", b: "bg-indigo-50", h: "/group" },
-                  { t: "Hesapla", i: Calculator, c: "text-amber-600", b: "bg-amber-50", h: "/settlement" }
+                  { t: "Takvim", i: CalendarIcon, c: "text-blue-600", b: "bg-blue-50 dark:bg-blue-900/10", h: "/calendar" },
+                  { t: "Grup", i: Users, c: "text-indigo-600", b: "bg-indigo-50 dark:bg-indigo-900/10", h: "/group" },
+                  { t: "Hesapla", i: Calculator, c: "text-amber-600", b: "bg-amber-50 dark:bg-amber-900/10", h: "/settlement" }
                 ].map(item => (
                   <Link key={item.t} href={item.h}>
-                    <div className="bg-white p-4 rounded-3xl border border-gray-50 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                    <div className="bg-card p-4 rounded-3xl border border-border shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                       <div className="flex items-center gap-4">
                         <div className={cn("p-3 rounded-2xl", item.b, item.c)}><item.i size={22} strokeWidth={2.5} /></div>
-                        <span className="font-black text-slate-900">{item.t}</span>
+                        <span className="font-black text-foreground">{item.t}</span>
                       </div>
-                      <ChevronRight size={18} className="text-gray-300 group-hover:text-blue-600" />
+                      <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary" />
                     </div>
                   </Link>
                 ))}
@@ -502,18 +498,18 @@ export default function Dashboard() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="bg-green-100 p-1.5 rounded-lg text-green-600"><TrendingUp size={16} strokeWidth={3} /></div>
-                <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Analiz & Trafik</h2>
+                <div className="bg-green-100 dark:bg-green-900/20 p-1.5 rounded-lg text-green-600"><TrendingUp size={16} strokeWidth={3} /></div>
+                <h2 className="text-base font-black tracking-tight text-foreground">Analiz & Trafik</h2>
               </div>
-              <div className="bg-[#0B1C2D] rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl h-full flex flex-col justify-between min-h-[300px]">
+              <div className="bg-card rounded-[2.5rem] p-8 text-foreground relative overflow-hidden shadow-2xl h-full flex flex-col justify-between min-h-[300px] border border-border">
                 <div className="relative z-10">
-                  <MapIcon size={24} className="text-blue-400 mb-6" />
+                  <MapIcon size={24} className="text-primary mb-6" />
                   <h3 className="text-2xl font-black mb-3 italic transform -skew-x-6">TRAFİK & ROTA</h3>
-                  <p className="text-xs text-blue-100/60 font-medium">Güncel Ankara trafiğine göre en hızlı güzergâh.</p>
+                  <p className="text-xs text-muted-foreground font-medium">Güncel Ankara trafiğine göre en hızlı güzergâh.</p>
                 </div>
                 <div className="space-y-3 relative z-10 w-full mt-6">
                   <Link href="/map" className="block w-full">
-                    <Button className="bg-white text-[#0B1C2D] hover:bg-blue-50 rounded-2xl p-6 font-black uppercase tracking-wider w-full shadow-lg">ROTA ANALİZİ</Button>
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl p-6 font-black uppercase tracking-wider w-full shadow-lg">ROTA ANALİZİ</Button>
                   </Link>
                   <Button
                     onClick={() => {
@@ -536,19 +532,19 @@ export default function Dashboard() {
           {/* Reports Section */}
           <div className="space-y-4 pt-8">
             <div className="flex items-center gap-2">
-              <div className="bg-amber-100 p-1.5 rounded-lg text-amber-600"><Fuel size={16} strokeWidth={3} /></div>
-              <h2 className={cn("text-base font-black tracking-tight", isDarkMode ? "text-white" : "text-[#1E293B]")}>Rapor Analizleri</h2>
+              <div className="bg-amber-100 dark:bg-amber-900/20 p-1.5 rounded-lg text-amber-600"><Fuel size={16} strokeWidth={3} /></div>
+              <h2 className="text-base font-black tracking-tight text-foreground">Rapor Analizleri</h2>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Link href="/reports" className="block p-6 rounded-[2.5rem] bg-white border border-gray-100 shadow-lg hover:shadow-xl transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center mb-4 text-amber-600"><Fuel size={24} /></div>
-                <h3 className="text-lg font-black text-slate-900 mb-1">Yakıt Raporu</h3>
-                <p className="text-xs text-gray-400 font-bold">Maliyet ve tüketim özeti.</p>
+              <Link href="/reports" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center mb-4 text-amber-600"><Fuel size={24} /></div>
+                <h3 className="text-lg font-black text-foreground mb-1">Yakıt Raporu</h3>
+                <p className="text-xs text-muted-foreground font-bold">Maliyet ve tüketim özeti.</p>
               </Link>
-              <Link href="/group" className="block p-6 rounded-[2.5rem] bg-white border border-gray-100 shadow-lg hover:shadow-xl transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center mb-4 text-indigo-600"><Users size={24} /></div>
-                <h3 className="text-lg font-black text-slate-900 mb-1">Üye Listesi</h3>
-                <p className="text-xs text-gray-400 font-bold">Takım arkadaşların.</p>
+              <Link href="/group" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center mb-4 text-indigo-600"><Users size={24} /></div>
+                <h3 className="text-lg font-black text-foreground mb-1">Üye Listesi</h3>
+                <p className="text-xs text-muted-foreground font-bold">Takım arkadaşların.</p>
               </Link>
             </div>
           </div>
@@ -556,27 +552,27 @@ export default function Dashboard() {
 
         {/* Dialogs */}
         <Dialog open={isSeatingPlanOpen} onOpenChange={setIsSeatingPlanOpen}>
-          <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] overflow-y-auto rounded-[3rem] p-4 bg-white border-none shadow-2xl">
+          <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] overflow-y-auto rounded-[3rem] p-4 bg-card border-border shadow-2xl">
             <SeatingPlan
               driver={members.find(m => m.uid === todayTrip?.driverUid)}
               participants={todayTrip?.participants?.map((id: string) => members.find(m => m.uid === id)).filter(Boolean) as UserProfile[] || []}
-              className="bg-slate-50"
+              className="bg-muted/50"
             />
-            <div className="pt-6 flex justify-center"><Button onClick={() => setIsSeatingPlanOpen(false)} variant="ghost" className="rounded-xl font-bold">KAPAT</Button></div>
+            <div className="pt-6 flex justify-center"><Button onClick={() => setIsSeatingPlanOpen(false)} variant="ghost" className="rounded-xl font-bold text-foreground hover:bg-muted">KAPAT</Button></div>
           </DialogContent>
         </Dialog>
 
         <Dialog open={isDriverDialogOpen} onOpenChange={setIsDriverDialogOpen}>
-          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white">
-            <div className="bg-[#1E293B] p-6 text-white"><DialogHeader><DialogTitle className="text-xl font-black">Yolculuk Düzenle</DialogTitle></DialogHeader></div>
+          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-0 overflow-hidden border-border shadow-2xl bg-card">
+            <div className="bg-primary p-6 text-primary-foreground"><DialogHeader><DialogTitle className="text-xl font-black">Yolculuk Düzenle</DialogTitle></DialogHeader></div>
             <div className="p-6 space-y-6">
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ŞOFÖR</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">ŞOFÖR</label>
                 <Select onValueChange={(uid) => handleUpdateTrip({ driverUid: uid })} value={todayTrip?.driverUid || ""}>
-                  <SelectTrigger className="w-full h-14 rounded-2xl bg-gray-50 border-transparent font-bold"><SelectValue placeholder="Şoför Seç..." /></SelectTrigger>
-                  <SelectContent className="rounded-2xl border-gray-100">
+                  <SelectTrigger className="w-full h-14 rounded-2xl bg-muted border-transparent font-bold text-foreground"><SelectValue placeholder="Şoför Seç..." /></SelectTrigger>
+                  <SelectContent className="rounded-2xl border-border bg-card">
                     {members.map(m => (
-                      <SelectItem key={m.uid} value={m.uid} className="rounded-xl font-bold py-3">
+                      <SelectItem key={m.uid} value={m.uid} className="rounded-xl font-bold py-3 text-foreground focus:bg-muted">
                         <div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={m.photoURL} /><AvatarFallback>{m.name?.charAt(0)}</AvatarFallback></Avatar>{m.name}</div>
                       </SelectItem>
                     ))}
@@ -584,17 +580,17 @@ export default function Dashboard() {
                 </Select>
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">YOLCULAR</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">YOLCULAR</label>
                 <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                   {members.map(m => (
-                    <div key={m.uid} onClick={() => toggleParticipant(m.uid)} className={cn("flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer", todayTrip?.participants?.includes(m.uid) ? "bg-blue-50 border-blue-100" : "bg-gray-50 border-transparent opacity-60")}>
-                      <div className="flex items-center gap-3"><Avatar className="h-8 w-8"><AvatarImage src={m.photoURL} /></Avatar><span className="text-sm font-bold text-slate-900">{m.name}</span></div>
-                      {todayTrip?.participants?.includes(m.uid) && <div className="bg-blue-600 text-white p-1 rounded-full"><CheckCircle2 size={12} /></div>}
+                    <div key={m.uid} onClick={() => toggleParticipant(m.uid)} className={cn("flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer", todayTrip?.participants?.includes(m.uid) ? "bg-primary/10 border-primary/20" : "bg-muted/50 border-transparent opacity-60")}>
+                      <div className="flex items-center gap-3"><Avatar className="h-8 w-8"><AvatarImage src={m.photoURL} /></Avatar><span className="text-sm font-bold text-foreground">{m.name}</span></div>
+                      {todayTrip?.participants?.includes(m.uid) && <div className="bg-primary text-primary-foreground p-1 rounded-full"><CheckCircle2 size={12} /></div>}
                     </div>
                   ))}
                 </div>
               </div>
-              <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black text-white shadow-lg shadow-blue-200">KAPAT</Button>
+              <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-primary-foreground shadow-lg shadow-primary/20">KAPAT</Button>
             </div>
           </DialogContent>
         </Dialog>

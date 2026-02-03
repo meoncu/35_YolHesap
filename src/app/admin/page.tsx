@@ -235,28 +235,28 @@ export default function AdminPage() {
                         </Button>
                     </Link>
                     <div className="flex flex-col gap-1">
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Yönetim Paneli</h1>
-                        <p className="text-gray-500 font-medium">Sistem yönetimi ve takip işlemleri.</p>
+                        <h1 className="text-3xl font-black text-foreground tracking-tight">Yönetim Paneli</h1>
+                        <p className="text-muted-foreground font-medium">Sistem yönetimi ve takip işlemleri.</p>
                     </div>
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex p-1 bg-gray-100/50 rounded-xl w-fit">
+                <div className="flex p-1 bg-muted/50 rounded-xl w-fit border border-border">
                     <button
                         onClick={() => setActiveTab("users")}
-                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "users" ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}
+                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "users" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
                     >
                         Kullanıcılar
                     </button>
                     <button
                         onClick={() => setActiveTab("routes")}
-                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "routes" ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}
+                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "routes" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
                     >
                         Güzergah Takibi
                     </button>
                     <button
                         onClick={() => setActiveTab("settings")}
-                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "settings" ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}
+                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "settings" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
                     >
                         Sistem Ayarları
                     </button>
@@ -266,10 +266,10 @@ export default function AdminPage() {
                     <>
                         {/* Search Bar */}
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
                             <Input
                                 placeholder="İsim veya e-posta ile ara..."
-                                className="pl-10 h-12 bg-white border-gray-200 rounded-xl shadow-sm text-base"
+                                className="pl-10 h-12 bg-card border-border rounded-xl shadow-sm text-base text-foreground"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -290,18 +290,18 @@ export default function AdminPage() {
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, scale: 0.95 }}
-                                            className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group"
+                                            className="bg-card p-4 rounded-2xl shadow-sm border border-border flex items-center justify-between group"
                                         >
                                             <div className="flex items-center gap-4 overflow-hidden">
                                                 <div className="relative">
-                                                    <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                                                    <Avatar className="h-12 w-12 border-2 border-card shadow-sm">
                                                         <AvatarImage src={user.photoURL} />
-                                                        <AvatarFallback className="bg-blue-50 text-blue-600 font-bold">
+                                                        <AvatarFallback className="bg-primary/10 text-primary font-bold">
                                                             {user.name?.charAt(0) || "U"}
                                                         </AvatarFallback>
                                                     </Avatar>
                                                     {user.isApproved && (
-                                                        <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-0.5 rounded-full border-2 border-white">
+                                                        <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-0.5 rounded-full border-2 border-card">
                                                             <Check size={10} strokeWidth={4} />
                                                         </div>
                                                     )}
@@ -309,12 +309,12 @@ export default function AdminPage() {
 
                                                 <div className="flex flex-col min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-gray-900 truncate">{user.name || "İsimsiz"}</span>
+                                                        <span className="font-bold text-foreground truncate">{user.name || "İsimsiz"}</span>
                                                         {user.role === 'admin' && (
-                                                            <span className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">YÖNETİCİ</span>
+                                                            <span className="bg-primary/10 text-primary text-[10px] font-black px-1.5 py-0.5 rounded uppercase">YÖNETİCİ</span>
                                                         )}
                                                     </div>
-                                                    <span className="text-sm text-gray-500 truncate">{user.email}</span>
+                                                    <span className="text-sm text-muted-foreground truncate">{user.email}</span>
                                                 </div>
                                             </div>
 
@@ -366,39 +366,39 @@ export default function AdminPage() {
                 ) : activeTab === "routes" ? (
                     // ROUTES TAB CONTENT
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
+                        <div className="bg-card p-6 rounded-3xl border border-border shadow-sm space-y-6">
                             <div className="flex flex-col md:flex-row gap-4">
                                 <div className="space-y-2 flex-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tarih Seç</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tarih Seç</label>
                                     <Input
                                         type="date"
                                         value={format(routeDate, "yyyy-MM-dd")}
                                         onChange={(e) => setRouteDate(new Date(e.target.value))}
-                                        className="h-12 rounded-xl border-gray-200"
+                                        className="h-12 rounded-xl border-border bg-muted text-foreground"
                                     />
                                 </div>
                                 <div className="space-y-2 flex-1">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Sürücü Seç</label>
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sürücü Seç</label>
                                     <select
-                                        className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 border-gray-200"
+                                        className="flex h-12 w-full items-center justify-between rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         value={selectedDriver}
                                         onChange={(e) => setSelectedDriver(e.target.value)}
                                     >
-                                        <option value="">Sürücü Seçiniz...</option>
+                                        <option value="" className="bg-card">Sürücü Seçiniz...</option>
                                         {users.map(u => (
-                                            <option key={u.uid} value={u.uid}>{u.name}</option>
+                                            <option key={u.uid} value={u.uid} className="bg-card">{u.name}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div className="flex items-end">
-                                    <Button onClick={handleFetchRoute} className="h-12 px-8 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto">
+                                    <Button onClick={handleFetchRoute} className="h-12 px-8 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground w-full md:w-auto">
                                         {mapLoading ? <Loader2 className="animate-spin mr-2" /> : "Rotayı Getir"}
                                     </Button>
                                 </div>
                             </div>
 
                             {/* Map Container */}
-                            <div className="relative w-full h-[500px] bg-gray-50 rounded-3xl overflow-hidden border border-gray-200">
+                            <div className="relative w-full h-[500px] bg-muted rounded-3xl overflow-hidden border border-border">
                                 {isLoaded ? (
                                     <GoogleMap
                                         mapContainerStyle={mapContainerStyle}
@@ -436,7 +436,7 @@ export default function AdminPage() {
                                 )}
                             </div>
 
-                            <div className="flex gap-2 text-xs text-gray-500 font-medium px-2">
+                            <div className="flex gap-2 text-xs text-muted-foreground font-medium px-2">
                                 <Info size={14} />
                                 <span>GPS verileri anlık olarak sürücünün cihazından alınır. Kesintisiz takip için sürücünün GPS izni vermiş olması ve uygulamanın açık olması gerekir.</span>
                             </div>
@@ -445,37 +445,37 @@ export default function AdminPage() {
                 ) : (
                     // SETTINGS TAB CONTENT
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl">
-                        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-blue-900/5 space-y-8">
+                        <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl shadow-blue-900/5 space-y-8">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                                     <Shield size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black text-gray-900">Genel Sistem Ayarları</h3>
-                                    <p className="text-sm text-gray-500 font-medium leading-none mt-1">Uygulama genelindeki hesaplamaları etkiler.</p>
+                                    <h3 className="text-xl font-black text-foreground">Genel Sistem Ayarları</h3>
+                                    <p className="text-sm text-muted-foreground font-medium leading-none mt-1">Uygulama genelindeki hesaplamaları etkiler.</p>
                                 </div>
                             </div>
 
                             <div className="space-y-6">
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
-                                            <Calculator size={14} className="text-blue-500" />
+                                        <label className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-2">
+                                            <Calculator size={14} className="text-primary" />
                                             Günlük Sabit Ücret (₺)
                                         </label>
-                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">VARSAYILAN: 100 ₺</span>
+                                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">VARSAYILAN: 100 ₺</span>
                                     </div>
                                     <div className="relative group">
                                         <Input
                                             type="number"
                                             value={settings.dailyFee}
                                             onChange={(e) => setSettings({ ...settings, dailyFee: parseFloat(e.target.value) || 0 })}
-                                            className="h-16 rounded-2xl border-gray-200 bg-gray-50/50 text-2xl font-black px-6 focus:bg-white transition-all focus:ring-4 focus:ring-blue-100 placeholder:text-gray-300"
+                                            className="h-16 rounded-2xl border-border bg-muted/50 text-2xl font-black px-6 focus:bg-card transition-all focus:ring-4 focus:ring-primary/10 placeholder:text-muted-foreground/30 text-foreground"
                                             placeholder="100"
                                         />
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 font-black text-xl italic group-focus-within:text-blue-500">TL</div>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30 font-black text-xl italic group-focus-within:text-primary">TL</div>
                                     </div>
-                                    <p className="text-xs text-gray-400 font-medium pl-1 leading-relaxed">
+                                    <p className="text-xs text-muted-foreground font-medium pl-1 leading-relaxed">
                                         Hesap makinelerinde ve ana sayfadaki borç/alacak tablolarında kullanılan temel birim fiyattır. Yarım gidişler bu değerin yarısı olarak hesaplanır.
                                     </p>
                                 </div>
@@ -484,7 +484,7 @@ export default function AdminPage() {
                                     <Button
                                         onClick={handleSaveSettings}
                                         disabled={isSavingSettings}
-                                        className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-sm shadow-xl shadow-blue-200 disabled:opacity-50 group"
+                                        className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 disabled:opacity-50 group"
                                     >
                                         {isSavingSettings ? (
                                             <Loader2 className="animate-spin" />
@@ -495,7 +495,7 @@ export default function AdminPage() {
                                             </div>
                                         )}
                                     </Button>
-                                    <p className="text-[10px] text-center text-gray-400 mt-4 font-bold uppercase tracking-widest italic leading-none">
+                                    <p className="text-[10px] text-center text-muted-foreground mt-4 font-bold uppercase tracking-widest italic leading-none">
                                         * DEĞİŞİKLİKLER TÜM KULLANICILAR İÇİN ANINDA GEÇERLİ OLUR.
                                     </p>
                                 </div>
