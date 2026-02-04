@@ -55,6 +55,14 @@ export interface MonthlySettlement {
     netAmount: number; // Credit - Debt
 }
 
+export interface DrivingTrackPoint {
+    lat: number;
+    lng: number;
+    timestamp: number;
+    speed?: number; // km/h
+    address?: string; // Street/Road info
+}
+
 export interface DrivingTrack {
     id?: string;
     userId: string;
@@ -63,6 +71,7 @@ export interface DrivingTrack {
     endTime: string;
     distanceKm: number;
     avgSpeed: number; // km/h
-    points: { lat: number; lng: number; timestamp: number }[];
+    points: DrivingTrackPoint[];
     type: 'morning' | 'evening';
 }
+

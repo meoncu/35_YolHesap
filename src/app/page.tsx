@@ -44,7 +44,8 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { getUsers, getAllTrips, saveTrip, saveLocation, getAppSettings, AppSettings, getApprovedUsers, getDrivingTracks } from "@/lib/db-service";
+import { getUsers, getAllTrips, saveTrip, saveLocation, getAppSettings, AppSettings, getApprovedUsers, getDrivingTracks, getAllDrivingTracks } from "@/lib/db-service";
+
 import { getFuelPrices, FuelPriceData } from "@/lib/fuel-service";
 import { UserProfile, Trip, DrivingTrack } from "@/types";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addDays } from "date-fns";
@@ -77,6 +78,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SeatingPlan } from "@/components/dashboard/SeatingPlan";
+import { LiveTrackingCard } from "@/components/dashboard/LiveTrackingCard";
 
 export default function Dashboard() {
   const { profile, user, logout } = useAuth();
@@ -86,6 +88,7 @@ export default function Dashboard() {
     monthlyCredit: 0,
     nextDriver: "Belli Değil"
   });
+
   const [loading, setLoading] = useState(true);
   const [isParticipating, setIsParticipating] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
@@ -207,18 +210,25 @@ export default function Dashboard() {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        const [fetchedUsers, trips, prices, appSettings, tracks] = await Promise.all([
+        const [fetchedUsers, trips, prices, appSettings, userTracks] = await Promise.all([
           getApprovedUsers(),
           getAllTrips(),
           getFuelPrices(),
           getAppSettings(),
           user ? getDrivingTracks(user.uid, format(new Date(), "yyyy-MM")) : Promise.resolve([])
         ]);
+
+        let tracks = userTracks as DrivingTrack[];
+        if (tracks.length === 0) {
+          tracks = await getAllDrivingTracks(format(new Date(), "yyyy-MM"));
+        }
+
         setMembers(fetchedUsers);
         setAllTrips(trips);
         setFuelPrices(prices);
         setSettings(appSettings);
-        setDrivingTracks(tracks as DrivingTrack[]);
+        setDrivingTracks(tracks);
+
       } catch (error) {
         console.error("Error fetching initial dashboard data:", error);
       } finally {
@@ -522,7 +532,11 @@ export default function Dashboard() {
                 </div>
               )}
             </Card>
+
+            {/* Live Tracking Section */}
+            <LiveTrackingCard />
           </div>
+
 
           {/* New Driving Tracks Section */}
           <div className="flex flex-col gap-4">

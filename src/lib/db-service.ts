@@ -9,8 +9,10 @@ import {
     where,
     serverTimestamp,
     orderBy,
-    deleteDoc
+    deleteDoc,
+    limit
 } from "firebase/firestore";
+
 import { db } from "./firebase";
 import { Trip, UserProfile, Group, DrivingTrack } from "@/types";
 import { format } from "date-fns";
@@ -39,6 +41,14 @@ export const updateUserProfile = async (uid: string, data: Partial<UserProfile>)
 export const deleteUserProfile = async (uid: string) => {
     await deleteDoc(doc(db, "users", uid));
 };
+
+export const getUserByEmail = async (email: string): Promise<UserProfile | null> => {
+    const q = query(collection(db, "users"), where("email", "==", email));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as UserProfile;
+};
+
 
 // Trip Services
 export const saveTrip = async (trip: Trip) => {
@@ -104,6 +114,21 @@ export const getRoute = async (date: string, uid: string) => {
     return querySnapshot.docs.map(doc => doc.data());
 };
 
+export const getLatestLocation = async (uid: string) => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const q = query(
+        collection(db, "routes"),
+        where("date", "==", today),
+        where("uid", "==", uid),
+        orderBy("timestamp", "desc"),
+        limit(1)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as { latitude: number, longitude: number, timestamp: any };
+};
+
+
 export const getGroups = async (): Promise<Group[]> => {
     const querySnapshot = await getDocs(collection(db, "groups"));
     return querySnapshot.docs.map(doc => {
@@ -136,6 +161,20 @@ export const getDrivingTracks = async (userId: string, month: string): Promise<D
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ ...doc.data() as DrivingTrack, id: doc.id }));
 };
+
+export const getAllDrivingTracks = async (month: string): Promise<DrivingTrack[]> => {
+    const tracksRef = collection(db, "drivingTracks");
+    const q = query(
+        tracksRef,
+        where("date", ">=", `${month}-01`),
+        where("date", "<=", `${month}-31`),
+        orderBy("date", "desc"),
+        limit(10)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ ...doc.data() as DrivingTrack, id: doc.id }));
+};
+
 
 export const calculateAndSaveTripDistance = async (tripId: string, date: string, driverUid: string) => {
     try {

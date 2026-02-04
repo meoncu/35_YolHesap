@@ -4,33 +4,42 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { saveDrivingTrack, saveLocation } from '@/lib/db-service';
 import { calculateRouteDistance } from '@/lib/fuel-service';
-import { DrivingTrack } from '@/types';
-import { format } from 'date-fns';
+import { DrivingTrack, DrivingTrackPoint } from '@/types';
+import { format, getDay } from 'date-fns';
 import { toast } from 'sonner';
+import { reverseGeocode } from '@/lib/location-service';
 
 /**
  * GpsTracker Component
  * Automatically tracks GPS coordinates during specified time windows:
  * Morning: 07:50 - 08:30
  * Evening: 17:30 - 18:00
+ * Weekdays ONLY.
  */
 export const GpsTracker: React.FC = () => {
     const { user, profile } = useAuth();
     const [isTracking, setIsTracking] = useState(false);
-    const [currentPoints, setCurrentPoints] = useState<{ lat: number, lng: number, timestamp: number }[]>([]);
     const watchIdRef = useRef<number | null>(null);
     const trackingTypeRef = useRef<'morning' | 'evening' | null>(null);
-    const pointsRef = useRef<{ lat: number, lng: number, timestamp: number }[]>([]);
+    const pointsRef = useRef<DrivingTrackPoint[]>([]);
+    const lastMinuteSavedRef = useRef<number>(0);
 
     useEffect(() => {
         const checkTimeAndTrack = () => {
             if (!user) return;
 
-            // Link to meoncu@gmail.com specifically as requested, or allow admin to test
-            // Note: In production you might want this for all users, but following user request.
+            // Only for meoncu@gmail.com as requested
             if (user.email !== 'meoncu@gmail.com' && profile?.role !== 'admin') return;
 
             const now = new Date();
+            const dayOfWeek = getDay(now); // 0 = Sunday, 6 = Saturday
+
+            // Weekends excluded (0=Sun, 6=Sat)
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                if (isTracking) stopTracking();
+                return;
+            }
+
             const timeStr = format(now, "HH:mm");
 
             const isMorning = timeStr >= "07:50" && timeStr <= "08:30";
@@ -43,7 +52,7 @@ export const GpsTracker: React.FC = () => {
             }
         };
 
-        const timer = setInterval(checkTimeAndTrack, 30000); // Check every 30s
+        const timer = setInterval(checkTimeAndTrack, 20000); // Check every 20s
         checkTimeAndTrack(); // Initial check
 
         return () => clearInterval(timer);
@@ -59,20 +68,34 @@ export const GpsTracker: React.FC = () => {
         setIsTracking(true);
         trackingTypeRef.current = type;
         pointsRef.current = [];
-        setCurrentPoints([]);
+        lastMinuteSavedRef.current = 0;
 
         watchIdRef.current = navigator.geolocation.watchPosition(
-            (position) => {
-                const newPoint = {
+            async (position) => {
+                const now = Date.now();
+                const speedKmh = position.coords.speed ? (position.coords.speed * 3.6) : 0;
+
+                // We want to record a point for the polyline frequently (good for the map)
+                // But we only do reverse geocoding every ~60 seconds to avoid API limits and clutter
+                const shouldDoReverseGeocode = (now - lastMinuteSavedRef.current) >= 58000; // ~1 minute
+
+                let address = "";
+                if (shouldDoReverseGeocode) {
+                    address = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+                    lastMinuteSavedRef.current = now;
+                }
+
+                const newPoint: DrivingTrackPoint = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
-                    timestamp: Date.now()
+                    timestamp: now,
+                    speed: Math.round(speedKmh * 10) / 10,
+                    address: address || undefined
                 };
 
                 pointsRef.current.push(newPoint);
-                setCurrentPoints([...pointsRef.current]);
 
-                // Also save incremental location for real-time map features (legacy support)
+                // Also save incremental location for real-time map features
                 saveLocation(user!.uid, newPoint.lat, newPoint.lng).catch(console.error);
             },
             (error) => {
@@ -109,7 +132,6 @@ export const GpsTracker: React.FC = () => {
 
         const capturedPoints = [...pointsRef.current];
         pointsRef.current = [];
-        setCurrentPoints([]);
 
         if (capturedPoints.length < 2 || !user || !type) {
             return;
@@ -138,9 +160,8 @@ export const GpsTracker: React.FC = () => {
         try {
             await saveDrivingTrack(track);
 
-            // AUTOMATICALLY UPDATE TRIP DISTANCE
-            // Find today's trip and update its distanceKm
-            const tripId = `${track.date}_main-group`; // Following existing logic for main-group
+            // Update main group trip distance automatically
+            const tripId = `${track.date}_main-group`;
             try {
                 const { doc, updateDoc } = await import('firebase/firestore');
                 const { db } = await import('@/lib/firebase');
@@ -148,13 +169,12 @@ export const GpsTracker: React.FC = () => {
                 await updateDoc(tripRef, {
                     distanceKm: distanceKm
                 });
-                console.log("Trip distance updated automatically.");
             } catch (e) {
-                console.warn("Could not update trip distance (trip might not exist yet):", e);
+                // Trip might not exist yet
             }
 
             toast.success(`${type === 'morning' ? 'Sabah' : 'Akşam'} yolculuğu başarıyla kaydedildi.`, {
-                description: `${distanceKm.toFixed(2)} km mesafe, ortalama ${avgSpeed.toFixed(1)} km/h hız. Raporlara işlendi.`
+                description: `${distanceKm.toFixed(2)} km mesafe kaydedildi.`
             });
         } catch (error) {
             console.error("Error saving track:", error);
@@ -162,11 +182,10 @@ export const GpsTracker: React.FC = () => {
         }
     };
 
-    // This component doesn't render anything UI-wise, but we could add a small indicator
     if (!isTracking) return null;
 
     return (
-        <div className="fixed bottom-24 right-4 z-50 animate-pulse">
+        <div className="fixed bottom-24 right-4 z-[9999] animate-pulse">
             <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border-2 border-primary-foreground/20">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
                 <span className="text-[10px] font-black uppercase tracking-widest">GPS AKTİF</span>
@@ -174,3 +193,4 @@ export const GpsTracker: React.FC = () => {
         </div>
     );
 };
+

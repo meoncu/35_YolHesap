@@ -20,8 +20,10 @@ import {
     AlertCircle,
     Info,
     Calculator,
-    ArrowLeft
+    ArrowLeft,
+    Activity
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -59,7 +61,8 @@ const defaultCenter = {
 
 export default function AdminPage() {
     const { user: currentUser } = useAuth();
-    const [activeTab, setActiveTab] = useState<"users" | "routes" | "settings">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "routes" | "logs" | "settings">("users");
+
 
     // Route Tracking State
     const [routeDate, setRouteDate] = useState(new Date());
@@ -255,6 +258,12 @@ export default function AdminPage() {
                         Güzergah Takibi
                     </button>
                     <button
+                        onClick={() => setActiveTab("logs")}
+                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "logs" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                    >
+                        Kayıtlar
+                    </button>
+                    <button
                         onClick={() => setActiveTab("settings")}
                         className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "settings" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
                     >
@@ -364,7 +373,6 @@ export default function AdminPage() {
                         </div>
                     </>
                 ) : activeTab === "routes" ? (
-                    // ROUTES TAB CONTENT
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="bg-card p-6 rounded-3xl border border-border shadow-sm space-y-6">
                             <div className="flex flex-col md:flex-row gap-4">
@@ -442,7 +450,28 @@ export default function AdminPage() {
                             </div>
                         </div>
                     </div>
+                ) : activeTab === "logs" ? (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-card p-12 rounded-[3rem] border border-border shadow-xl shadow-blue-900/5 text-center space-y-6">
+                            <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center mx-auto text-primary">
+                                <Activity size={48} />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-black text-foreground">Detaylı Güzergâh Kayıtları</h3>
+                                <p className="text-muted-foreground max-w-md mx-auto">
+                                    Sabah ve akşam yolculuklarınızın dakika bazlı konum, hız ve cadde bilgilerini içeren detaylı kayıtlarına buradan ulaşabilirsiniz.
+                                </p>
+                            </div>
+                            <Link href="/admin/tracks" className="block">
+                                <Button className="h-16 px-10 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20">
+                                    Kayıtları Görüntüle
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+
                 ) : (
+
                     // SETTINGS TAB CONTENT
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl">
                         <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl shadow-blue-900/5 space-y-8">
