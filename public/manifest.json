@@ -1,17 +1,23 @@
 {
-    "name": "YolTakip",
+    "name": "YolTakip - Yolculuk ve Ödeme",
     "short_name": "YolTakip",
-    "description": "Yolculuk ve Ödeme Takibi",
+    "description": "Arkadaş gruplarının işe gidiş-geliş araç paylaşımını ve ödeme hesaplarını takip edin.",
     "start_url": "/",
     "display": "standalone",
+    "orientation": "portrait",
     "background_color": "#ffffff",
     "theme_color": "#2563eb",
+    "categories": [
+        "finance",
+        "navigation",
+        "productivity"
+    ],
     "icons": [
         {
             "src": "/icon.svg",
             "sizes": "any",
             "type": "image/svg+xml",
-            "purpose": "any"
+            "purpose": "any maskable"
         },
         {
             "src": "/icon.svg",

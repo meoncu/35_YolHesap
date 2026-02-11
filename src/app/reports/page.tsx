@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addMonths, subMonths } from "date-fns";
+import { useSearchParams } from "next/navigation";
 
 interface ReportStats {
     daily: any[];
@@ -46,6 +47,7 @@ interface ReportStats {
 
 export default function ReportsPage() {
     const { user } = useAuth();
+    const searchParams = useSearchParams();
     // Start with current month
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [selectedTrack, setSelectedTrack] = useState<DrivingTrack | null>(null);
@@ -63,7 +65,7 @@ export default function ReportsPage() {
     const [fuelHistory, setFuelHistory] = useState<Record<string, FuelPriceData>>({});
     const [drivingTracks, setDrivingTracks] = useState<DrivingTrack[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'fuel' | 'gps'>('fuel');
+    const [activeTab, setActiveTab] = useState<'fuel' | 'gps'>(searchParams.get('tab') === 'gps' ? 'gps' : 'fuel');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -112,8 +114,25 @@ export default function ReportsPage() {
             const driver = getDriverInfo(trip.driverUid);
             const vehicle = driver?.vehicle;
 
-            // Default distance if missing
-            const distance = trip.distanceKm || 50;
+            // Determine Distance Source
+            // 1. Check for actual GPS tracks for this driver on this date
+            const daysTracks = drivingTracks.filter(t => t.date === trip.date && t.userId === trip.driverUid);
+            let distance = 0;
+
+            if (daysTracks.length > 0) {
+                // Sum up morning and evening tracks
+                distance = daysTracks.reduce((acc, t) => acc + (t.distanceKm || 0), 0);
+            }
+
+            // 2. If no GPS data (or 0), fallback to Trip's saved distance
+            if (distance === 0) {
+                distance = trip.distanceKm || 0;
+            }
+
+            // 3. If still 0, fallback to default (Google Route estimate / Hardcoded)
+            if (distance === 0) {
+                distance = 50.0;
+            }
 
             const consumptionRate = vehicle?.consumption || 7.0; // Default 7L/100km
             const fuelType = vehicle?.fuelType || 'benzin';

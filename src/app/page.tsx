@@ -216,7 +216,10 @@ export default function Dashboard() {
           getAllTrips(),
           getFuelPrices(),
           getAppSettings(),
-          user ? getDrivingTracks(user.uid, format(new Date(), "yyyy-MM")) : Promise.resolve([])
+          user ? getDrivingTracks(user.uid, format(new Date(), "yyyy-MM")).catch(err => {
+            console.error("Driving tracks fetch failed (likely missing index):", err);
+            return [];
+          }) : Promise.resolve([])
         ]);
 
         let tracks = userTracks as DrivingTrack[];
@@ -561,17 +564,17 @@ export default function Dashboard() {
 
 
           {/* New Driving Tracks Section */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-2">
-                <div className="bg-indigo-100 dark:bg-indigo-900/20 p-1.5 rounded-lg text-indigo-600"><Clock size={16} strokeWidth={3} /></div>
-                <h2 className="text-base font-black tracking-tight text-foreground">Son Sürüşler (GPS)</h2>
+          {drivingTracks.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-2 px-1">
+                <div className="flex items-center gap-2">
+                  <div className="bg-indigo-100 dark:bg-indigo-900/20 p-1.5 rounded-lg text-indigo-600"><Clock size={16} strokeWidth={3} /></div>
+                  <h2 className="text-base font-black tracking-tight text-foreground">Son Sürüşler (GPS)</h2>
+                </div>
+                <Link href="/reports?tab=gps" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">TÜMÜ</Link>
               </div>
-              <Link href="/reports?tab=gps" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">TÜMÜ</Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {drivingTracks.length > 0 ? (
-                drivingTracks.slice(0, 3).map((track, idx) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {drivingTracks.slice(0, 3).map((track, idx) => (
                   <Link href={`/reports?tab=gps&date=${track.date}`} key={idx}>
                     <Card className="border-border shadow-sm bg-card hover:shadow-md transition-all overflow-hidden group h-full">
                       <div className="p-4 flex items-center justify-between">
@@ -598,14 +601,10 @@ export default function Dashboard() {
                       </div>
                     </Card>
                   </Link>
-                ))
-              ) : (
-                <div className="md:col-span-2 lg:col-span-3 py-10 text-center text-muted-foreground text-xs font-bold bg-muted/30 rounded-[2rem] border border-dashed border-border">
-                  Henüz sürüş kaydı bulunmuyor.
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quick Actions & Analysis */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
