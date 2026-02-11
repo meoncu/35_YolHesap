@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getAllTrips, getUsers, getApprovedUsers, getDrivingTracks } from "@/lib/db-service";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getAllTrips, getApprovedUsers, getDrivingTracks } from "@/lib/db-service";
 import { getFuelPrices, getMonthFuelHistory, FuelPriceData } from "@/lib/fuel-service";
 import { Trip, UserProfile, DrivingTrack } from "@/types";
-import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, subMonths } from "date-fns";
 import { tr } from "date-fns/locale";
 import Link from "next/link";
 import { GoogleMap, useJsApiLoader, Polyline, Marker } from "@react-google-maps/api";
@@ -20,7 +20,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
-    Fuel,
     Gauge,
     TrendingUp,
     CalendarDays,
@@ -32,12 +31,10 @@ import {
     Navigation,
     Activity,
     Clock,
-    ArrowUpRight,
     MapPin,
     Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { addMonths, subMonths } from "date-fns";
 import { useSearchParams } from "next/navigation";
 
 interface ReportStats {
@@ -45,7 +42,7 @@ interface ReportStats {
     byDriver: any[];
 }
 
-export default function ReportsPage() {
+function ReportsContent() {
     const { user } = useAuth();
     const searchParams = useSearchParams();
     // Start with current month
@@ -602,6 +599,14 @@ export default function ReportsPage() {
                 </DialogContent>
             </Dialog>
         </AppLayout>
+    );
+}
+
+export default function ReportsPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Yükleniyor...</div>}>
+            <ReportsContent />
+        </Suspense>
     );
 }
 
