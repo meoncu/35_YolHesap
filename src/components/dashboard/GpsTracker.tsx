@@ -8,6 +8,7 @@ import { DrivingTrack, DrivingTrackPoint } from '@/types';
 import { format, getDay } from 'date-fns';
 import { toast } from 'sonner';
 import { reverseGeocode } from '@/lib/location-service';
+import { cn } from '@/lib/utils';
 
 /**
  * GpsTracker Component
@@ -19,6 +20,7 @@ import { reverseGeocode } from '@/lib/location-service';
 export const GpsTracker: React.FC = () => {
     const { user, profile } = useAuth();
     const [isTracking, setIsTracking] = useState(false);
+    const [isManualTest, setIsManualTest] = useState(false);
     const watchIdRef = useRef<number | null>(null);
     const trackingTypeRef = useRef<'morning' | 'evening' | null>(null);
     const pointsRef = useRef<DrivingTrackPoint[]>([]);
@@ -29,7 +31,10 @@ export const GpsTracker: React.FC = () => {
             if (!user) return;
 
             // Only for meoncu@gmail.com as requested
-            if (user.email !== 'meoncu@gmail.com' && profile?.role !== 'admin') return;
+            if (user.email !== 'meoncu@gmail.com' && profile?.role !== 'admin') {
+                console.log(`GPS Tracking skipped: User ${user.email} not authorized or not admin.`);
+                return;
+            }
 
             const now = new Date();
             const dayOfWeek = getDay(now); // 0 = Sunday, 6 = Saturday
@@ -46,9 +51,13 @@ export const GpsTracker: React.FC = () => {
             const isEvening = timeStr >= "17:30" && timeStr <= "18:00";
 
             if ((isMorning || isEvening) && !isTracking) {
-                startTracking(isMorning ? 'morning' : 'evening');
+                if (!isManualTest) startTracking(isMorning ? 'morning' : 'evening');
             } else if (!(isMorning || isEvening) && isTracking) {
-                stopTracking();
+                if (!isManualTest) stopTracking();
+            } else if (!isTracking && !isManualTest) {
+                // Debug log for why it's not tracking (only every minute or so to avoid spam? 
+                // actually checkTimeAndTrack runs every 20s. Let's log if it's NOT tracking)
+                console.log(`GPS Tracking skipped: Time ${timeStr} is outside windows (07:50-08:30, 17:30-18:00)`);
             }
         };
 
@@ -182,14 +191,46 @@ export const GpsTracker: React.FC = () => {
         }
     };
 
-    if (!isTracking) return null;
+    // If not tracking and not authorized for debug, don't render anything
+    // Show in development mode automatically for testing
+    const isDev = process.env.NODE_ENV === 'development';
+    const isAuthorized = user?.email === 'meoncu@gmail.com' || profile?.role === 'admin';
+
+    if (!isTracking && !isAuthorized && !isDev) return null;
 
     return (
-        <div className="fixed bottom-24 right-4 z-[9999] animate-pulse">
-            <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border-2 border-primary-foreground/20">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                <span className="text-[10px] font-black uppercase tracking-widest">GPS AKTİF</span>
-            </div>
+        <div className="fixed bottom-24 right-4 z-[9999] flex flex-col items-end gap-2">
+            {isTracking && (
+                <div className="animate-pulse bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border-2 border-primary-foreground/20">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">GPS AKTİF</span>
+                </div>
+            )}
+
+            {/* Debug Button for Admin/Meoncu/Dev */}
+            {(isAuthorized || isDev) && (
+                <button
+                    onClick={() => {
+                        if (isTracking) {
+                            stopTracking();
+                            setIsManualTest(false);
+                            toast.info("Test modu durduruldu.");
+                        } else {
+                            setIsManualTest(true);
+                            startTracking('evening'); // Default to evening type for test
+                            toast.success("Test modu başlatıldı (Zaman kısıtlaması yok)");
+                        }
+                    }}
+                    className={cn(
+                        "text-[9px] font-bold px-3 py-1.5 rounded-full shadow-lg transition-all",
+                        isTracking && isManualTest
+                            ? "bg-red-500 text-white hover:bg-red-600"
+                            : "bg-gray-800 text-white hover:bg-black opacity-50 hover:opacity-100"
+                    )}
+                >
+                    {isTracking && isManualTest ? "TESTİ DURDUR" : "GPS TEST BAŞLAT"}
+                </button>
+            )}
         </div>
     );
 };

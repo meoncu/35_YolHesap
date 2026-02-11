@@ -90,6 +90,7 @@ export default function Dashboard() {
   });
 
   const [loading, setLoading] = useState(true);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [isParticipating, setIsParticipating] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
   const [todayTrip, setTodayTrip] = useState<any>(null);
@@ -233,16 +234,28 @@ export default function Dashboard() {
         console.error("Error fetching initial dashboard data:", error);
       } finally {
         setLoading(false);
+        setInitialFetchDone(true);
       }
     };
     fetchInitialData();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const calculateDashboardStats = async () => {
-      if (!user || allTrips.length === 0 || members.length === 0) return;
+      if (!user) return;
+
       setLoading(true);
       try {
+        // If data is not ready yet, just reset and wait
+        if (!initialFetchDone) return;
+
+        if (allTrips.length === 0 || members.length === 0) {
+          setTodayTrip(null);
+          setTodayParticipants([]);
+          setStats(s => ({ ...s, totalTrips: 0, monthlyDebt: 0, monthlyCredit: 0 }));
+          return;
+        }
+
         const todayStr = format(new Date(), "yyyy-MM-dd");
         const selectedMonthStr = format(selectedDate, "yyyy-MM");
         const monthlyTrips = allTrips.filter(t => t.date.startsWith(selectedMonthStr));
@@ -263,6 +276,7 @@ export default function Dashboard() {
 
         let driverName = "Belli Değil";
         let todayDetails: { profile: UserProfile, isDriver: boolean }[] = [];
+
         if (today) {
           setTodayTrip(today);
           const driver = members.find(u => u.uid === today.driverUid);
@@ -270,6 +284,9 @@ export default function Dashboard() {
           setHasJoined(today.participants.includes(user.uid));
           const participantProfiles = members.filter(u => today.participants.includes(u.uid));
           todayDetails = participantProfiles.map(p => ({ profile: p, isDriver: p.uid === today.driverUid })).sort((a, b) => (a.isDriver === b.isDriver) ? 0 : a.isDriver ? -1 : 1);
+        } else {
+          setTodayTrip(null);
+          setHasJoined(false);
         }
 
         setTodayParticipants(todayDetails);
@@ -476,7 +493,12 @@ export default function Dashboard() {
               <h2 className="text-base font-black tracking-tight text-foreground">Bugünün Yolculuğu</h2>
             </div>
             <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[2.5rem] overflow-hidden bg-card">
-              {todayTrip ? (
+              {loading ? (
+                <div className="p-12 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                  <LoaderIcon className="animate-spin text-primary" size={32} />
+                  <span className="text-xs font-bold animate-pulse">Yolculuk bilgisi yükleniyor...</span>
+                </div>
+              ) : todayTrip ? (
                 <div className="p-6 flex flex-col md:flex-row gap-6 items-center">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex flex-col items-center justify-center font-black">
