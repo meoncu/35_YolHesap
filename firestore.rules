@@ -30,6 +30,9 @@ service cloud.firestore {
     match /driving_tracks/{document=**} {
       allow read, write: if isApproved();
     }
+    match /drivingTracks/{document=**} {
+      allow read, write: if isApproved();
+    }
 
     // Prices and Settings
     match /fuelPrices/{document=**} {

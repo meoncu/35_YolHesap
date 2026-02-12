@@ -168,9 +168,31 @@ export const getAllDrivingTracks = async (month: string): Promise<DrivingTrack[]
         tracksRef,
         where("date", ">=", `${month}-01`),
         where("date", "<=", `${month}-31`),
-        orderBy("date", "desc"),
-        limit(10)
+        orderBy("date", "desc")
     );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ ...doc.data() as DrivingTrack, id: doc.id }));
+};
+
+export const getTracksByDateRange = async (startDate: string, endDate: string, userId?: string): Promise<DrivingTrack[]> => {
+    const tracksRef = collection(db, "drivingTracks");
+    let q;
+    if (userId) {
+        q = query(
+            tracksRef,
+            where("userId", "==", userId),
+            where("date", ">=", startDate),
+            where("date", "<=", endDate),
+            orderBy("date", "desc")
+        );
+    } else {
+        q = query(
+            tracksRef,
+            where("date", ">=", startDate),
+            where("date", "<=", endDate),
+            orderBy("date", "desc")
+        );
+    }
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ ...doc.data() as DrivingTrack, id: doc.id }));
 };

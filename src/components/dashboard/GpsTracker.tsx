@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { saveDrivingTrack, saveLocation } from '@/lib/db-service';
 import { calculateRouteDistance } from '@/lib/fuel-service';
@@ -12,47 +12,93 @@ import { cn } from '@/lib/utils';
 
 /**
  * GpsTracker Component
- * Automatically tracks GPS coordinates during specified time windows:
- * Morning: 07:50 - 08:30
- * Evening: 17:30 - 18:00
- * Weekdays ONLY.
+ * - Automatically tracks GPS coordinates during specified time windows (weekdays only):
+ *   Morning: 07:50 - 08:30
+ *   Evening: 17:30 - 18:30
+ * - Manual test mode: allows GPS recording at ANY time with full controls.
+ * - Works on mobile browsers including Opera on Android.
  */
 export const GpsTracker: React.FC = () => {
     const { user, profile } = useAuth();
     const [liveDistance, setLiveDistance] = useState(0);
     const [isTracking, setIsTracking] = useState(false);
     const [isManualTest, setIsManualTest] = useState(false);
+    const [pointCount, setPointCount] = useState(0);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [testType, setTestType] = useState<'morning' | 'evening'>('morning');
+    const [showPanel, setShowPanel] = useState(false);
+    const [gpsStatus, setGpsStatus] = useState<'idle' | 'acquiring' | 'active' | 'error'>('idle');
+    const [lastCoord, setLastCoord] = useState<{ lat: number; lng: number } | null>(null);
+
     const watchIdRef = useRef<number | null>(null);
     const trackingTypeRef = useRef<'morning' | 'evening' | null>(null);
     const pointsRef = useRef<DrivingTrackPoint[]>([]);
     const lastMinuteSavedRef = useRef<number>(0);
+    const isManualTestRef = useRef(false);
+    const startTimeRef = useRef<number>(0);
+    const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // ... (existing refs) removed as they are now declared above
+    // Keep ref in sync with state for use in callbacks
+    isManualTestRef.current = isManualTest;
 
-    const startTracking = (type: 'morning' | 'evening') => {
+    const isAuthorized = user?.email === 'meoncu@gmail.com' || profile?.role === 'admin';
+
+    const startTracking = useCallback((type: 'morning' | 'evening') => {
         if (!("geolocation" in navigator)) {
-            console.error("Geolocation is not supported by this browser.");
+            toast.error("Bu tarayıcı GPS/Konum servisini desteklemiyor.", {
+                description: "Lütfen tarayıcı ayarlarından konum iznini kontrol edin."
+            });
             return;
         }
 
-        console.log(`Starting ${type} GPS tracking...`);
+        // Check for existing watch
+        if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+            watchIdRef.current = null;
+        }
+
+        console.log(`[GPS] Starting ${type} tracking...`);
         setIsTracking(true);
         setLiveDistance(0);
+        setPointCount(0);
+        setElapsedSeconds(0);
+        setGpsStatus('acquiring');
         trackingTypeRef.current = type;
         pointsRef.current = [];
         lastMinuteSavedRef.current = 0;
+        startTimeRef.current = Date.now();
+
+        // Start elapsed timer
+        if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+        elapsedTimerRef.current = setInterval(() => {
+            setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
+        }, 1000);
 
         watchIdRef.current = navigator.geolocation.watchPosition(
             async (position) => {
                 const now = Date.now();
                 const speedKmh = position.coords.speed ? (position.coords.speed * 3.6) : 0;
+                const accuracy = position.coords.accuracy;
 
-                // Reverse geocoding throttling
+                setGpsStatus('active');
+                setLastCoord({ lat: position.coords.latitude, lng: position.coords.longitude });
+
+                // Skip very inaccurate readings (>100m)
+                if (accuracy > 100) {
+                    console.log(`[GPS] Skipping inaccurate point (accuracy: ${accuracy}m)`);
+                    return;
+                }
+
+                // Reverse geocoding throttling (every ~58 seconds)
                 const shouldDoReverseGeocode = (now - lastMinuteSavedRef.current) >= 58000;
 
                 let address = "";
                 if (shouldDoReverseGeocode) {
-                    address = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+                    try {
+                        address = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+                    } catch (e) {
+                        console.error("[GPS] Reverse geocode failed:", e);
+                    }
                     lastMinuteSavedRef.current = now;
                 }
 
@@ -68,22 +114,42 @@ export const GpsTracker: React.FC = () => {
                 if (pointsRef.current.length > 0) {
                     const lastPoint = pointsRef.current[pointsRef.current.length - 1];
                     const dist = calculateDistance(lastPoint.lat, lastPoint.lng, newPoint.lat, newPoint.lng);
-                    setLiveDistance(prev => prev + dist);
+                    // Only add distance if the movement seems real (>5m)
+                    if (dist > 0.005) {
+                        setLiveDistance(prev => prev + dist);
+                    }
                 }
 
-                // Add EVERY point
+                // Add point
                 pointsRef.current.push(newPoint);
+                setPointCount(pointsRef.current.length);
 
-                // Real-time update
-                saveLocation(user!.uid, newPoint.lat, newPoint.lng).catch(console.error);
+                // Real-time location save to Firestore
+                if (user) {
+                    saveLocation(user.uid, newPoint.lat, newPoint.lng).catch(err => {
+                        console.error("[GPS] Failed to save location:", err);
+                    });
+                }
             },
             (error) => {
-                console.error(`GPS Error: Code ${error.code} - ${error.message}`);
-                let errorMessage = "GPS hatası oluştu.";
+                console.error(`[GPS] Error: Code ${error.code} - ${error.message}`);
                 if (error.code === 1) { // PERMISSION_DENIED
-                    errorMessage = "GPS izni reddedildi.";
+                    setGpsStatus('error');
                     setIsTracking(false);
-                    toast.error(errorMessage);
+                    setIsManualTest(false);
+                    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+                    toast.error("GPS İzni Reddedildi!", {
+                        description: "Tarayıcı ayarlarından konum iznini 'İzin Ver' olarak değiştirin ve sayfayı yenileyin.",
+                        duration: 10000
+                    });
+                } else if (error.code === 2) { // POSITION_UNAVAILABLE
+                    setGpsStatus('error');
+                    toast.error("GPS sinyali alınamıyor.", {
+                        description: "Açık alana çıkın veya GPS'i açın."
+                    });
+                } else if (error.code === 3) { // TIMEOUT
+                    // Timeout can happen, don't stop tracking
+                    console.warn("[GPS] Timeout, will retry...");
                 }
             },
             {
@@ -93,21 +159,31 @@ export const GpsTracker: React.FC = () => {
             }
         );
 
-        toast.info(`${type === 'morning' ? 'Sabah' : 'Akşam'} yolculuğu takibi başladı.`, {
-            description: "Güzergâhınız kaydediliyor.",
+        const label = type === 'morning' ? 'Sabah' : 'Akşam';
+        toast.info(`${label} yolculuğu takibi başladı.`, {
+            description: "Güzergâhınız kaydediliyor. Tarayıcıyı kapatmayın.",
             duration: 5000
         });
-    };
+    }, [user]);
 
-    const stopTracking = async () => {
-        console.log("Stopping GPS tracking...");
+    const stopTracking = useCallback(async () => {
+        console.log("[GPS] Stopping tracking...");
 
         if (watchIdRef.current !== null) {
             navigator.geolocation.clearWatch(watchIdRef.current);
             watchIdRef.current = null;
         }
 
+        if (elapsedTimerRef.current) {
+            clearInterval(elapsedTimerRef.current);
+            elapsedTimerRef.current = null;
+        }
+
         setIsTracking(false);
+        setGpsStatus('idle');
+        const wasManualTest = isManualTestRef.current;
+        setIsManualTest(false);
+
         const type = trackingTypeRef.current;
         trackingTypeRef.current = null;
 
@@ -115,7 +191,13 @@ export const GpsTracker: React.FC = () => {
         pointsRef.current = [];
 
         if (capturedPoints.length < 2 || !user || !type) {
-            console.warn("Not enough points to save track.");
+            const reason = capturedPoints.length < 2
+                ? `Yetersiz nokta sayısı (${capturedPoints.length})`
+                : !user ? "Kullanıcı bulunamadı" : "Tip belirlenemedi";
+            console.warn(`[GPS] Cannot save track: ${reason}`);
+            toast.warning("Yolculuk kaydedilemedi.", {
+                description: `${reason}. En az 2 GPS noktası gerekli.`
+            });
             return;
         }
 
@@ -130,7 +212,7 @@ export const GpsTracker: React.FC = () => {
 
         const track: DrivingTrack = {
             userId: user.uid,
-            date: format(new Date(), "yyyy-MM-dd"),
+            date: format(new Date(startTime), "yyyy-MM-dd"),
             startTime: format(new Date(startTime), "HH:mm"),
             endTime: format(new Date(endTime), "HH:mm"),
             distanceKm,
@@ -161,45 +243,51 @@ export const GpsTracker: React.FC = () => {
                     await updateDoc(tripDoc.ref, {
                         distanceKm: distanceKm
                     });
-                    console.log(`Updated trip ${tripDoc.id} distance to ${distanceKm} km`);
+                    console.log(`[GPS] Updated trip ${tripDoc.id} distance to ${distanceKm} km`);
                 }
             } catch (e) {
-                console.error("Failed to update trip distance:", e);
+                console.error("[GPS] Failed to update trip distance:", e);
             }
 
-            toast.success(`${type === 'morning' ? 'Sabah' : 'Akşam'} yolculuğu başarıyla kaydedildi.`, {
-                description: `${distanceKm.toFixed(2)} km mesafe kaydedildi.`
+            const label = type === 'morning' ? 'Sabah' : 'Akşam';
+            toast.success(`${label} yolculuğu başarıyla kaydedildi! ✅`, {
+                description: `📍 ${distanceKm.toFixed(2)} km • ${capturedPoints.length} nokta • ${track.startTime}-${track.endTime}`,
+                duration: 8000
             });
         } catch (error) {
-            console.error("Error saving track:", error);
-            toast.error("Yolculuk verisi kaydedilemedi.");
+            console.error("[GPS] Error saving track:", error);
+            toast.error("Yolculuk verisi kaydedilemedi.", {
+                description: "İnternet bağlantınızı kontrol edin."
+            });
         }
-    };
+    }, [user]);
 
+    // Automatic time-based tracking
     useEffect(() => {
         const checkTimeAndTrack = () => {
             if (!user) return;
-            // Only for meoncu@gmail.com as requested
-            if (user.email !== 'meoncu@gmail.com' && profile?.role !== 'admin') {
-                return;
-            }
+            if (user.email !== 'meoncu@gmail.com' && profile?.role !== 'admin') return;
+
+            // Skip if manual test is active
+            if (isManualTestRef.current) return;
 
             const now = new Date();
             const dayOfWeek = getDay(now);
 
+            // Weekends off
             if (dayOfWeek === 0 || dayOfWeek === 6) {
-                if (isTracking) stopTracking();
+                if (isTracking && !isManualTestRef.current) stopTracking();
                 return;
             }
 
             const timeStr = format(now, "HH:mm");
             const isMorning = timeStr >= "07:50" && timeStr <= "08:30";
-            const isEvening = timeStr >= "17:30" && timeStr <= "18:00";
+            const isEvening = timeStr >= "17:30" && timeStr <= "18:30";
 
             if ((isMorning || isEvening) && !isTracking) {
-                if (!isManualTest) startTracking(isMorning ? 'morning' : 'evening');
-            } else if (!(isMorning || isEvening) && isTracking) {
-                if (!isManualTest) stopTracking();
+                startTracking(isMorning ? 'morning' : 'evening');
+            } else if (!(isMorning || isEvening) && isTracking && !isManualTestRef.current) {
+                stopTracking();
             }
         };
 
@@ -208,59 +296,202 @@ export const GpsTracker: React.FC = () => {
 
         return () => {
             clearInterval(timer);
+        };
+    }, [user, isTracking, profile, startTracking, stopTracking]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
             if (watchIdRef.current !== null) {
                 navigator.geolocation.clearWatch(watchIdRef.current);
             }
+            if (elapsedTimerRef.current) {
+                clearInterval(elapsedTimerRef.current);
+            }
         };
-    }, [user, isTracking, profile]);
+    }, []);
 
-    // Show in development mode automatically for testing
-    const isDev = process.env.NODE_ENV === 'development';
-    const isAuthorized = user?.email === 'meoncu@gmail.com' || profile?.role === 'admin';
+    // Format elapsed time
+    const formatElapsed = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
 
-    if (!isTracking && !isAuthorized && !isDev) return null;
+    if (!isAuthorized) return null;
 
     return (
-        <div className="fixed bottom-24 right-4 z-[9999] flex flex-col items-end gap-2 pointer-events-none">
+        <div className="fixed bottom-24 right-4 z-[9999] flex flex-col items-end gap-2">
+            {/* Live Tracking Info Panel */}
             {isTracking && (
-                <div className="animate-pulse bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border-2 border-primary-foreground/20 pointer-events-auto">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                    <div className="flex flex-col leading-none">
-                        <span className="text-[10px] font-black uppercase tracking-widest">GPS AKTİF</span>
-                        <span className="text-[9px] font-mono opacity-80">{liveDistance.toFixed(2)} KM</span>
+                <div className="bg-card border-2 border-primary shadow-2xl shadow-primary/20 rounded-2xl p-3 min-w-[200px] animate-in fade-in slide-in-from-right-4 duration-500 pointer-events-auto">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="relative">
+                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full" />
+                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full absolute inset-0 animate-ping" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                            {isManualTest ? 'TEST MODU' : 'GPS AKTİF'}
+                        </span>
+                        <span className={cn(
+                            "text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ml-auto",
+                            trackingTypeRef.current === 'morning'
+                                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                : "bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400"
+                        )}>
+                            {trackingTypeRef.current === 'morning' ? '☀ Sabah' : '🌙 Akşam'}
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                            <p className="text-[8px] font-bold text-muted-foreground uppercase">Mesafe</p>
+                            <p className="text-sm font-black text-foreground">{liveDistance.toFixed(2)}</p>
+                            <p className="text-[8px] text-muted-foreground">km</p>
+                        </div>
+                        <div>
+                            <p className="text-[8px] font-bold text-muted-foreground uppercase">Nokta</p>
+                            <p className="text-sm font-black text-foreground">{pointCount}</p>
+                            <p className="text-[8px] text-muted-foreground">adet</p>
+                        </div>
+                        <div>
+                            <p className="text-[8px] font-bold text-muted-foreground uppercase">Süre</p>
+                            <p className="text-sm font-black text-foreground font-mono">{formatElapsed(elapsedSeconds)}</p>
+                            <p className="text-[8px] text-muted-foreground">dk:sn</p>
+                        </div>
+                    </div>
+
+                    {lastCoord && (
+                        <div className="mt-2 px-1">
+                            <p className="text-[8px] font-bold text-muted-foreground truncate">
+                                📍 {lastCoord.lat.toFixed(5)}, {lastCoord.lng.toFixed(5)}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* GPS Status indicator */}
+                    <div className="mt-2 flex items-center gap-1.5">
+                        <div className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            gpsStatus === 'active' ? "bg-emerald-500" :
+                                gpsStatus === 'acquiring' ? "bg-yellow-500 animate-pulse" :
+                                    gpsStatus === 'error' ? "bg-red-500" : "bg-gray-400"
+                        )} />
+                        <span className="text-[8px] font-bold text-muted-foreground">
+                            {gpsStatus === 'active' ? 'Sinyal Alınıyor' :
+                                gpsStatus === 'acquiring' ? 'GPS Bağlanıyor...' :
+                                    gpsStatus === 'error' ? 'GPS Hatası!' : 'Beklemede'}
+                        </span>
+                    </div>
+
+                    {/* Stop button while tracking */}
+                    {isManualTest && (
+                        <button
+                            onClick={() => stopTracking()}
+                            className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white text-xs font-black py-2.5 rounded-xl shadow-lg shadow-red-500/30 transition-all active:scale-95 uppercase tracking-wider"
+                        >
+                            ⏹ TESTİ DURDUR VE KAYDET
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Test Control Panel (when not tracking) */}
+            {!isTracking && showPanel && (
+                <div className="bg-card border border-border shadow-2xl rounded-2xl p-4 min-w-[220px] animate-in fade-in slide-in-from-right-4 duration-300 pointer-events-auto">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-black text-foreground uppercase tracking-wider">GPS Test Paneli</span>
+                        <button
+                            onClick={() => setShowPanel(false)}
+                            className="text-muted-foreground hover:text-foreground text-sm font-bold p-1"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    {/* Type selector */}
+                    <div className="mb-3">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1.5">Yolculuk Tipi</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                                onClick={() => setTestType('morning')}
+                                className={cn(
+                                    "text-[10px] font-black py-2 rounded-lg border transition-all",
+                                    testType === 'morning'
+                                        ? "bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20"
+                                        : "bg-muted/50 text-muted-foreground border-border hover:border-blue-300"
+                                )}
+                            >
+                                ☀ Sabah
+                            </button>
+                            <button
+                                onClick={() => setTestType('evening')}
+                                className={cn(
+                                    "text-[10px] font-black py-2 rounded-lg border transition-all",
+                                    testType === 'evening'
+                                        ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20"
+                                        : "bg-muted/50 text-muted-foreground border-border hover:border-orange-300"
+                                )}
+                            >
+                                🌙 Akşam
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Start button */}
+                    <button
+                        onClick={() => {
+                            setIsManualTest(true);
+                            startTracking(testType);
+                            setShowPanel(false);
+                        }}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black py-3 rounded-xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95 uppercase tracking-wider"
+                    >
+                        ▶ GPS KAYDI BAŞLAT
+                    </button>
+
+                    <p className="text-[8px] text-muted-foreground text-center mt-2 leading-relaxed">
+                        Herhangi bir zamanda GPS kaydı başlatır.<br />
+                        Durdurana kadar kayıt devam eder.
+                    </p>
+
+                    {/* GPS Permission check hint */}
+                    <div className="mt-3 bg-muted/50 rounded-lg p-2">
+                        <p className="text-[8px] font-bold text-muted-foreground flex items-center gap-1">
+                            ℹ️ Konum izni gereklidir
+                        </p>
+                        <p className="text-[7px] text-muted-foreground mt-0.5">
+                            Opera / Chrome: Adres çubuğu → 🔒 → Site Ayarları → Konum → İzin Ver
+                        </p>
                     </div>
                 </div>
             )}
 
-            {/* Debug Button */}
-            {(isAuthorized || isDev) && (
+            {/* Main Toggle Button */}
+            {!isTracking && (
                 <button
-                    onClick={() => {
-                        if (isTracking) {
-                            stopTracking();
-                            setIsManualTest(false);
-                            toast.info("Test modu durduruldu.");
-                        } else {
-                            setIsManualTest(true);
-                            startTracking('evening');
-                            toast.success("Test modu başlatıldı (Zaman kısıtlaması yok)");
-                        }
-                    }}
+                    onClick={() => setShowPanel(!showPanel)}
                     className={cn(
-                        "text-[9px] font-bold px-3 py-1.5 rounded-full shadow-lg transition-all pointer-events-auto",
-                        isTracking && isManualTest
-                            ? "bg-red-500 text-white hover:bg-red-600"
-                            : "bg-gray-800 text-white hover:bg-black opacity-50 hover:opacity-100"
+                        "flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl transition-all pointer-events-auto active:scale-95",
+                        showPanel
+                            ? "bg-primary text-primary-foreground shadow-primary/30"
+                            : "bg-card border border-border text-foreground hover:border-primary/50 hover:shadow-primary/10"
                     )}
                 >
-                    {isTracking && isManualTest ? "TESTİ DURDUR" : "GPS TEST BAŞLAT"}
+                    <div className={cn(
+                        "w-3 h-3 rounded-full",
+                        gpsStatus === 'error' ? "bg-red-500" : "bg-emerald-500"
+                    )} />
+                    <span className="text-[11px] font-black uppercase tracking-wider">
+                        GPS Test
+                    </span>
                 </button>
             )}
         </div>
     );
 };
 
-// Helper for live distance
+// Haversine formula for live distance calculation
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371;
     const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -272,4 +503,3 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 };
-
