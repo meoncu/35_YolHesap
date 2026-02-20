@@ -71,7 +71,6 @@ export default function AdminPage() {
     const [selectedDriver, setSelectedDriver] = useState<string>("");
     const [routePath, setRoutePath] = useState<any[]>([]);
     const [mapLoading, setMapLoading] = useState(false);
-    const [isTestingGps, setIsTestingGps] = useState(false);
 
     // Settings State
     const [settings, setSettings] = useState<AppSettings>({ dailyFee: 100 });
@@ -226,43 +225,7 @@ export default function AdminPage() {
         }
     };
 
-    const handleTestGpsWrite = async () => {
-        setIsTestingGps(true);
-        if (!navigator.geolocation) {
-            toast.error("Tarayıcınız konum servisini desteklemiyor.");
-            setIsTestingGps(false);
-            return;
-        }
 
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            try {
-                const { latitude, longitude } = position.coords;
-                // Save a test location for the current user
-                // Use a standard function that is used in GpsTracker
-                if (!currentUser) {
-                    toast.error("Kullanıcı oturumu bulunamadı.");
-                    return;
-                }
-
-                await saveLocation(currentUser.uid, latitude, longitude);
-
-                toast.success(`GPS Test Başarılı! Konum: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} veritabanına kaydedildi.`);
-            } catch (error) {
-                console.error("GPS Test Error:", error);
-                toast.error("GPS verisi veritabanına yazılamadı.");
-            } finally {
-                setIsTestingGps(false);
-            }
-        }, (error) => {
-            console.error("Geolocation error:", error);
-            toast.error(`Konum alınamadı: ${error.message}`);
-            setIsTestingGps(false);
-        }, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        });
-    };
 
     const filteredUsers = users.filter(u =>
         u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

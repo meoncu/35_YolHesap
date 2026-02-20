@@ -191,6 +191,14 @@ export default function Home() {
 
   const handleCellClick = (day: Date) => {
     if (!isAdmin) return;
+
+    // Disable weekends (0 = Sunday, 6 = Saturday)
+    const dayOfWeek = day.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      toast.info("Hafta sonları yolculuk planı yapılmamaktadır.");
+      return;
+    }
+
     setActiveDay(day);
     setIsDriverDialogOpen(true);
   };
@@ -358,6 +366,7 @@ export default function Home() {
             const driver = trip ? members.find(m => m.uid === trip.driverUid) : null;
             const isCurrentMonth = day.getMonth() === selectedDate.getMonth();
             const isTodayDay = isToday(day);
+            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
             const participantsNames = trip?.participants
               ? members.filter(m => trip.participants.includes(m.uid)).map(m => m.name).join(", ")
               : "";
@@ -365,11 +374,12 @@ export default function Home() {
             return (
               <motion.div
                 key={i}
-                whileTap={{ scale: 0.95 }}
+                whileTap={isWeekend ? {} : { scale: 0.95 }}
                 onClick={() => handleCellClick(day)}
                 className={cn(
                   "relative aspect-square rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all group",
                   !isCurrentMonth ? "opacity-20 bg-muted/20 border-transparent" : "bg-card border-border shadow-sm",
+                  isWeekend && "bg-muted/30 border-dashed opacity-40 cursor-not-allowed",
                   isTodayDay && "ring-2 ring-primary ring-offset-2 ring-offset-background z-10",
                   driver && getPersonColor(driver.uid) + " border-transparent"
                 )}
