@@ -32,7 +32,7 @@ export default function SettlementDetailPage() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<UserProfile[]>([]);
-    const [dailyFee, setDailyFee] = useState(100);
+    const [settings, setSettings] = useState<any>({ dailyFee: 100 });
     const [loading, setLoading] = useState(true);
     const [activeUser, setActiveUser] = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ export default function SettlementDetailPage() {
                 ]);
                 setUsers(fetchedUsers);
                 setTrips(fetchedTrips);
-                setDailyFee(settings.dailyFee);
+                setSettings(settings);
 
                 if (fetchedUsers.length > 0 && !activeUser) {
                     setActiveUser(fetchedUsers[0].uid);
@@ -83,15 +83,21 @@ export default function SettlementDetailPage() {
             let description = "";
 
             if (trip) {
+                // Dynamic fee check
+                let activeFee = settings.dailyFee;
+                if (settings.feeEffectiveDate && dateStr < settings.feeEffectiveDate) {
+                    activeFee = settings.previousDailyFee || settings.dailyFee;
+                }
+
                 if (trip.driverUid === activeUser) {
                     role = 'driver';
                     const othersCount = (trip.participants || []).filter(pid => pid !== activeUser).length;
-                    amount = othersCount * dailyFee;
-                    description = `${othersCount} Yolcu x ₺${dailyFee}`;
+                    amount = othersCount * activeFee;
+                    description = `${othersCount} Yolcu x ₺${activeFee}`;
                 } else if (trip.participants?.includes(activeUser)) {
                     role = 'passenger';
-                    amount = -dailyFee;
-                    description = `Yolcu Ücreti`;
+                    amount = -activeFee;
+                    description = `Yolcu Ücreti (₺${activeFee})`;
                 }
             }
 
@@ -114,7 +120,7 @@ export default function SettlementDetailPage() {
             totalDebt,
             net
         };
-    }, [activeUser, users, trips, monthDays, dailyFee]);
+    }, [activeUser, users, trips, monthDays, settings]);
 
     const handlePrevMonth = () => {
         setSelectedDate(prev => {
@@ -146,7 +152,7 @@ export default function SettlementDetailPage() {
                         <div>
                             <h1 className="text-2xl font-black text-foreground tracking-tight">Hesap Detayları</h1>
                             <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1">
-                                <Receipt size={12} /> Günlük Ücret: ₺{dailyFee}
+                                <Receipt size={12} /> Güncel Ücret: ₺{settings.dailyFee}
                             </p>
                         </div>
                     </div>
@@ -282,9 +288,9 @@ export default function SettlementDetailPage() {
                             <div className="space-y-1">
                                 <h4 className="text-xs font-black uppercase tracking-widest text-foreground">Hesaplama Mantığı</h4>
                                 <p className="text-[10px] text-muted-foreground leading-relaxed font-medium">
-                                    Şoför olduğunuz günlerde araçtaki diğer her bir yolcu için hanenize <strong>+₺{dailyFee}</strong> eklenir.
-                                    Yolcu olduğunuz günlerde ise şoföre ödenmek üzere hanenize <strong>-₺{dailyFee}</strong> yazılır.
-                                    Araçta olmadığınız günler hesaplamaya dahil edilmez.
+                                    Şoför olduğunuz günlerde araçtaki diğer her bir yolcu için belirlenen günlük ücret hanenize <strong>artı</strong> olarak eklenir.
+                                    Yolcu olduğunuz günlerde ise şoföre ödenmek üzere hanenize <strong>eksi</strong> yazılır.
+                                    Ücret değişiklikleri (zamlar), belirlenen başlangıç tarihine göre otomatik hesaplanır.
                                 </p>
                             </div>
                         </div>

@@ -82,10 +82,7 @@ export default function Home() {
   const [activeDay, setActiveDay] = useState<Date | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Manual user creation state
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [newUserName, setNewUserName] = useState("");
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
 
   // PWA Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -135,7 +132,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = profile?.role === 'admin' && user?.email === 'meoncu@gmail.com';
 
   // Calendar logic
   const monthStart = startOfMonth(selectedDate);
@@ -165,15 +162,21 @@ export default function Home() {
         const isDriver = trip.driverUid === member.uid;
         const isParticipant = trip.participants?.includes(member.uid);
 
+        // Dynamic fee check
+        let activeFee = settings.dailyFee;
+        if (settings.feeEffectiveDate && trip.date < settings.feeEffectiveDate) {
+          activeFee = settings.previousDailyFee || settings.dailyFee;
+        }
+
         if (isDriver) {
           driverDays++;
           // Credit calculation: everyone else pays this member
           const othersCount = trip.participants.filter(pid => pid !== member.uid).length;
-          credit += othersCount * dailyFee;
+          credit += othersCount * activeFee;
         } else if (isParticipant) {
           passengerDays++;
           // Debt: this member pays the driver
-          debt += dailyFee;
+          debt += activeFee;
         }
       });
 
@@ -271,21 +274,7 @@ export default function Home() {
     }
   };
 
-  const handleCreateUser = async () => {
-    if (!newUserName.trim() || !isAdmin) return;
-    setIsCreatingUser(true);
-    try {
-      await createManualUser(newUserName.trim());
-      toast.success("Yeni yolcu eklendi.");
-      setNewUserName("");
-      setIsAddUserOpen(false);
-      fetchData();
-    } catch (error) {
-      toast.error("Kullanıcı eklenemedi.");
-    } finally {
-      setIsCreatingUser(false);
-    }
-  };
+
 
   const nextMonth = () => setSelectedDate(addMonths(selectedDate, 1));
   const prevMonth = () => setSelectedDate(subMonths(selectedDate, 1));
@@ -324,15 +313,17 @@ export default function Home() {
             {user ? (
               <div className="flex gap-1">
                 {isAdmin && (
-                  <Button onClick={() => setIsAddUserOpen(true)} variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-emerald-100/50 text-emerald-600">
-                    <UserPlus size={16} />
+                  <Link href="/admin">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-muted">
+                      <Settings size={16} />
+                    </Button>
+                  </Link>
+                )}
+                {!isAdmin && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/10 text-primary">
+                    <CheckCircle2 size={16} />
                   </Button>
                 )}
-                <Link href="/admin">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-muted">
-                    <Settings size={16} />
-                  </Button>
-                </Link>
               </div>
             ) : (
               <Button onClick={signInWithGoogle} variant="ghost" className="h-8 px-3 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase">
@@ -474,11 +465,11 @@ export default function Home() {
         {/* Footer Info */}
         <div className="flex flex-col gap-1 items-center opacity-40 mt-4">
           <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest">
-            YOLTAKİP v2.0
+            YOLTAKİP v2.2.0
           </p>
           {!isAdmin && (
             <p className="text-[8px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em]">
-              Düzenleme Yapmak İçin Giriş Yapın
+              {user ? "Sadece Görüntüleme Modu" : "Düzenleme Yapmak İçin Yönetici Girişi Gerekir"}
             </p>
           )}
         </div>
@@ -572,36 +563,6 @@ export default function Home() {
               </div>
 
               <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-primary-foreground shadow-lg shadow-primary/20 uppercase tracking-widest">KAPAT</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Add User Dialog */}
-        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-6 border-border shadow-2xl bg-card">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black uppercase tracking-tighter">YENİ YOLCU EKLE</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 pt-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">İSİM SOYİSİM</label>
-                <Input
-                  placeholder="Örn: Ahmet Yılmaz"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  className="h-14 rounded-2xl bg-muted border-transparent font-bold text-foreground px-6 focus:ring-primary/20"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={() => setIsAddUserOpen(false)} variant="ghost" className="flex-1 h-14 rounded-2xl font-black text-muted-foreground uppercase tracking-widest text-xs">İPTAL</Button>
-                <Button
-                  onClick={handleCreateUser}
-                  disabled={isCreatingUser || !newUserName.trim()}
-                  className="flex-1 h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-primary-foreground shadow-lg shadow-primary/20 uppercase tracking-widest"
-                >
-                  {isCreatingUser ? <LoaderIcon className="animate-spin" size={18} /> : "KAYDET"}
-                </Button>
-              </div>
             </div>
           </DialogContent>
         </Dialog>

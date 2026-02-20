@@ -265,11 +265,15 @@ export const calculateAndSaveTripDistance = async (tripId: string, date: string,
 // Global Settings
 export interface AppSettings {
     dailyFee: number;
+    previousDailyFee?: number;
+    feeEffectiveDate?: string; // YYYY-MM-DD
     updatedAt?: any;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-    dailyFee: 100
+    dailyFee: 100,
+    previousDailyFee: 100,
+    feeEffectiveDate: "2024-01-01"
 };
 
 export const getAppSettings = async (): Promise<AppSettings> => {

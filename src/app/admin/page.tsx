@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
-import { getUsers, updateUserProfile, deleteUserProfile, getAppSettings, updateAppSettings, AppSettings, saveLocation } from "@/lib/db-service";
+import { getUsers, updateUserProfile, deleteUserProfile, getAppSettings, updateAppSettings, AppSettings, saveLocation, createManualUser } from "@/lib/db-service";
 import { UserProfile, UserRole } from "@/types";
 import { toast } from "sonner";
 import {
@@ -21,7 +21,10 @@ import {
     Info,
     Calculator,
     ArrowLeft,
-    Activity
+    Activity,
+    LogOut,
+    UserPlus,
+    UserCircle
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -62,7 +65,7 @@ const defaultCenter = {
 };
 
 export default function AdminPage() {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, logout } = useAuth();
     const [activeTab, setActiveTab] = useState<"users" | "routes" | "logs" | "settings" | "settlement">("users");
 
 
@@ -111,6 +114,15 @@ export default function AdminPage() {
         fetchSettings();
     }, []);
 
+    // Manual user creation state
+    const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+    const [newUserName, setNewUserName] = useState("");
+    const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+    const [isSchedulingFee, setIsSchedulingFee] = useState(false);
+    const [scheduledFee, setScheduledFee] = useState<number>(0);
+    const [effectiveDate, setEffectiveDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+
     const fetchSettings = async () => {
         const data = await getAppSettings();
         setSettings(data);
@@ -119,8 +131,29 @@ export default function AdminPage() {
     const handleSaveSettings = async () => {
         setIsSavingSettings(true);
         try {
-            await updateAppSettings(settings);
-            toast.success("Ayarlar kaydedildi.");
+            let updatedSettings = { ...settings };
+
+            if (isSchedulingFee) {
+                // If scheduling, the current dailyFee becomes previous, 
+                // and scheduledFee becomes the new dailyFee starting from effectiveDate
+                updatedSettings = {
+                    ...settings,
+                    previousDailyFee: settings.dailyFee,
+                    dailyFee: scheduledFee,
+                    feeEffectiveDate: effectiveDate
+                };
+            } else {
+                // Simple update if not scheduling (apply to everything)
+                updatedSettings = {
+                    ...settings,
+                    feeEffectiveDate: "2024-01-01" // Reset to far past so it's always 'new' fee
+                };
+            }
+
+            await updateAppSettings(updatedSettings);
+            setSettings(updatedSettings);
+            setIsSchedulingFee(false);
+            toast.success("Ayarlar başarıyla güncellendi.");
         } catch (error) {
             toast.error("Ayarlar kaydedilirken hata oluştu.");
         } finally {
@@ -138,6 +171,27 @@ export default function AdminPage() {
             toast.error("Kullanıcılar yüklenirken hata oluştu.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateManualUser = async () => {
+        if (!newUserName.trim()) {
+            toast.error("Lütfen bir isim girin.");
+            return;
+        }
+
+        setIsCreatingUser(true);
+        try {
+            await createManualUser(newUserName);
+            setNewUserName("");
+            setIsAddUserOpen(false);
+            toast.success("Yeni yolcu başarıyla eklendi.");
+            fetchUsers();
+        } catch (error) {
+            console.error("Error creating user:", error);
+            toast.error("Yolcu eklenirken bir hata oluştu.");
+        } finally {
+            setIsCreatingUser(false);
         }
     };
 
@@ -245,7 +299,33 @@ export default function AdminPage() {
                         <h1 className="text-3xl font-black text-foreground tracking-tight">Yönetim Paneli</h1>
                         <p className="text-muted-foreground font-medium">Sistem yönetimi ve takip işlemleri.</p>
                     </div>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto rounded-xl gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-100 font-bold"
+                        onClick={async () => {
+                            if (confirm("Çıkış yapmak istediğinize emin misiniz?")) {
+                                await logout();
+                            }
+                        }}
+                    >
+                        <LogOut size={16} />
+                        Çıkış Yap
+                    </Button>
                 </div>
+
+                {activeTab === "users" && (
+                    <div className="flex justify-end -mb-2">
+                        <Button
+                            onClick={() => setIsAddUserOpen(true)}
+                            className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 font-bold shadow-lg shadow-emerald-600/20"
+                        >
+                            <UserPlus size={18} />
+                            YENİ YOLCU EKLE
+                        </Button>
+                    </div>
+                )}
 
                 {/* Tab Navigation */}
                 <div className="flex p-1 bg-muted/50 rounded-xl w-fit border border-border">
@@ -520,24 +600,96 @@ export default function AdminPage() {
                                     </p>
                                 </div>
 
-                                <div className="pt-4">
-                                    <Button
-                                        onClick={handleSaveSettings}
-                                        disabled={isSavingSettings}
-                                        className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 disabled:opacity-50 group"
-                                    >
-                                        {isSavingSettings ? (
-                                            <Loader2 className="animate-spin" />
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <Check size={20} strokeWidth={3} />
-                                                AYARLARI KAYDET
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-2">
+                                                <Calculator size={14} className="text-primary" />
+                                                Mevcut Günlük Ücret (₺)
+                                            </label>
+                                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded">
+                                                SON GÜNCELLEME: {settings.feeEffectiveDate || 'Bilinmiyor'}
+                                            </span>
+                                        </div>
+
+                                        <div className="relative group">
+                                            <Input
+                                                type="number"
+                                                value={isSchedulingFee ? scheduledFee : settings.dailyFee}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value) || 0;
+                                                    if (isSchedulingFee) setScheduledFee(val);
+                                                    else setSettings({ ...settings, dailyFee: val });
+                                                }}
+                                                className={cn(
+                                                    "h-16 rounded-2xl border-border bg-muted/50 text-2xl font-black px-6 transition-all focus:ring-4 placeholder:text-muted-foreground/30 text-foreground",
+                                                    isSchedulingFee ? "ring-primary/10 border-primary/30" : "focus:ring-primary/10"
+                                                )}
+                                                placeholder="100"
+                                            />
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30 font-black text-xl italic group-focus-within:text-primary">TL</div>
+                                        </div>
+
+                                        <div className="bg-muted/30 p-4 rounded-2xl border border-border border-dashed space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-0.5">
+                                                    <p className="text-xs font-black text-foreground uppercase tracking-tight">Ücret Artışı Planla / Zam Yap</p>
+                                                    <p className="text-[10px] text-muted-foreground font-medium">Belirli bir tarihten itibaren geçerli olacak yeni ücret belirleyin.</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        if (!isSchedulingFee) setScheduledFee(settings.dailyFee);
+                                                        setIsSchedulingFee(!isSchedulingFee);
+                                                    }}
+                                                    className={cn(
+                                                        "w-12 h-6 rounded-full relative transition-all duration-300",
+                                                        isSchedulingFee ? "bg-primary" : "bg-muted-foreground/20"
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        "absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-sm",
+                                                        isSchedulingFee ? "left-7" : "left-1"
+                                                    )} />
+                                                </button>
                                             </div>
-                                        )}
-                                    </Button>
-                                    <p className="text-[10px] text-center text-muted-foreground mt-4 font-bold uppercase tracking-widest italic leading-none">
-                                        * DEĞİŞİKLİKLER TÜM KULLANICILAR İÇİN ANINDA GEÇERLİ OLUR.
-                                    </p>
+
+                                            {isSchedulingFee && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    className="space-y-3 pt-2 border-t border-border border-dashed overflow-hidden"
+                                                >
+                                                    <label className="text-[10px] font-black text-primary uppercase tracking-widest block font-sans">GEÇERLİLİK BAŞLANGIÇ TARİHİ</label>
+                                                    <Input
+                                                        type="date"
+                                                        value={effectiveDate}
+                                                        onChange={(e) => setEffectiveDate(e.target.value)}
+                                                        className="h-12 rounded-xl border-primary/20 bg-background font-bold"
+                                                    />
+                                                    <p className="text-[9px] text-primary/70 font-bold italic leading-tight">
+                                                        * Bu tarihten önceki tüm yolculuklar ₺{settings.dailyFee} üzerinden, bu tarih ve sonrasındakiler ₺{scheduledFee} üzerinden hesaplanacaktır.
+                                                    </p>
+                                                </motion.div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <Button
+                                            onClick={handleSaveSettings}
+                                            disabled={isSavingSettings}
+                                            className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 disabled:opacity-50"
+                                        >
+                                            {isSavingSettings ? (
+                                                <Loader2 className="animate-spin" />
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <Check size={20} strokeWidth={3} />
+                                                    {isSchedulingFee ? "ZAMLI ÜCRETİ KAYDET" : "AYARLARI KAYDET"}
+                                                </div>
+                                            )}
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -651,6 +803,52 @@ export default function AdminPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">İptal</Button>
                         <Button onClick={handleSaveEdit} className="bg-blue-600 hover:bg-blue-700 rounded-xl">Kaydet</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add User Dialog */}
+            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <UserPlus className="text-emerald-600" size={24} />
+                            Yeni Yolcu Ekle
+                        </DialogTitle>
+                        <DialogDescription>
+                            Sistemde kayıtlı olmayan (hesabı olmayan) yeni bir yolcu ekleyin.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-muted-foreground uppercase tracking-tight pl-1">Yolcu Adı Soyadı</label>
+                            <div className="relative group">
+                                <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-emerald-600" size={20} />
+                                <Input
+                                    value={newUserName}
+                                    onChange={(e) => setNewUserName(e.target.value)}
+                                    placeholder="Örn: Ahmet Yılmaz"
+                                    className="pl-10 h-12 rounded-xl bg-muted/50 focus:bg-background border-border"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
+                            <Info size={18} className="text-amber-600 mt-0.5" />
+                            <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+                                Manuel eklenen yolcular şifre ile giriş yapamazlar. Sadece araç planına ve hesaplamalara dahil edilmek üzere yönetici tarafından yönetilirler.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="ghost" onClick={() => setIsAddUserOpen(false)} className="rounded-xl font-bold">KAPAT</Button>
+                        <Button
+                            onClick={handleCreateManualUser}
+                            disabled={isCreatingUser || !newUserName.trim()}
+                            className="bg-emerald-600 hover:bg-emerald-700 rounded-xl font-bold gap-2 px-8"
+                        >
+                            {isCreatingUser ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} strokeWidth={3} />}
+                            YOLCUYU KAYDET
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
