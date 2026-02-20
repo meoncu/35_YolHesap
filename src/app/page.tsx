@@ -3,192 +3,94 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Car,
-  Users,
-  TrendingUp,
-  Calendar as CalendarIcon,
+  ChevronLeft,
   ChevronRight,
-  Phone,
-  CheckCircle2,
-  AlertCircle,
-  CreditCard,
-  Loader2 as LoaderIcon,
-  Shield,
-  Calculator,
-  Plus,
-  Moon,
-  Info,
-  Map as MapIcon,
-  Navigation,
-  Sun,
-  Cloud,
-  CloudRain,
-  Snowflake,
-  Wind,
-  Droplets,
-  LogOut,
-  Gauge,
-  Zap,
-  MoreVertical,
-  Fuel,
-  User,
-  Download,
   Smartphone,
-  Clock,
-  ArrowUpRight
+  Shield,
+  CheckCircle2,
+  Loader2 as LoaderIcon,
+  Wallet,
+  Info,
+  Settings,
+  UserPlus,
+  Check,
+  Users,
+  Calendar as CalendarIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { getUsers, getAllTrips, saveTrip, saveLocation, getAppSettings, AppSettings, getApprovedUsers, getDrivingTracks, getAllDrivingTracks } from "@/lib/db-service";
-
-import { getFuelPrices, FuelPriceData } from "@/lib/fuel-service";
-import { UserProfile, Trip, DrivingTrack } from "@/types";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addDays } from "date-fns";
+import {
+  getApprovedUsers,
+  getAllTrips,
+  saveTrip,
+  deleteTrip,
+  getAppSettings,
+  AppSettings,
+  createManualUser
+} from "@/lib/db-service";
+import { UserProfile, Trip } from "@/types";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  parseISO,
+  addMonths,
+  subMonths,
+  isToday,
+  startOfWeek,
+  endOfWeek
+} from "date-fns";
 import { tr } from "date-fns/locale";
 import { toast } from "sonner";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SeatingPlan } from "@/components/dashboard/SeatingPlan";
-import { LiveTrackingCard } from "@/components/dashboard/LiveTrackingCard";
+import { Input } from "@/components/ui/input";
 
-export default function Dashboard() {
-  const { profile, user, logout } = useAuth();
-  const [stats, setStats] = useState({
-    totalTrips: 0,
-    monthlyDebt: 0,
-    monthlyCredit: 0,
-    nextDriver: "Belli Değil"
-  });
+// Helper for person-based colors
+const getPersonColor = (uid: string) => {
+  const colors = [
+    "bg-blue-600", "bg-emerald-600", "bg-amber-600", "bg-rose-600",
+    "bg-indigo-600", "bg-violet-600", "bg-orange-600", "bg-cyan-600",
+    "bg-pink-600", "bg-lime-600", "bg-teal-600", "bg-fuchsia-600"
+  ];
+  let hash = 0;
+  for (let i = 0; i < uid.length; i++) {
+    hash = uid.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
 
+export default function Home() {
+  const { profile, user, signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [initialFetchDone, setInitialFetchDone] = useState(false);
-  const [isParticipating, setIsParticipating] = useState(false);
-  const [hasJoined, setHasJoined] = useState(false);
-  const [todayTrip, setTodayTrip] = useState<any>(null);
-  const [members, setMembers] = useState<UserProfile[]>([]);
-  const [todayParticipants, setTodayParticipants] = useState<{ profile: UserProfile, isDriver: boolean }[]>([]);
-  const [isDriverDialogOpen, setIsDriverDialogOpen] = useState(false);
-  const [isSeatingPlanOpen, setIsSeatingPlanOpen] = useState(false);
-  const [isUpdatingDriver, setIsUpdatingDriver] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [fuelPrices, setFuelPrices] = useState<FuelPriceData | null>(null);
-
+  const [members, setMembers] = useState<UserProfile[]>([]);
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [settings, setSettings] = useState<AppSettings>({ dailyFee: 100 });
-  const [drivingTracks, setDrivingTracks] = useState<DrivingTrack[]>([]);
-  const { isDarkMode, toggleDarkMode } = useTheme();
+  const [isDriverDialogOpen, setIsDriverDialogOpen] = useState(false);
+  const [activeDay, setActiveDay] = useState<Date | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Manual user creation state
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
-  const prayerTimes = useMemo(() => [
-    { n: 'İmsak', t: '06:28' },
-    { n: 'Güneş', t: '07:53' },
-    { n: 'Öğle', t: '13:08' },
-    { n: 'İkindi', t: '15:53' },
-    { n: 'Akşam', t: '18:12' },
-    { n: 'Yatsı', t: '19:32' }
-  ], []);
-
-  const { nextPrayerIdx, countdown } = useMemo(() => {
-    const now = currentTime;
-    const timeStrS = format(now, "HH:mm:ss");
-
-    let nextIdx = prayerTimes.findIndex(p => p.t + ":00" > timeStrS);
-    if (nextIdx === -1) nextIdx = 0;
-
-    const next = prayerTimes[nextIdx];
-    const [h, m] = next.t.split(':').map(Number);
-    const target = new Date(now);
-    target.setHours(h, m, 0, 0);
-
-    if (target < now) {
-      target.setDate(target.getDate() + 1);
-    }
-
-    const diff = target.getTime() - now.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    return {
-      nextPrayerIdx: nextIdx,
-      countdown: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-    };
-  }, [currentTime, prayerTimes]);
-
-  const timeStr = format(currentTime, "HH:mm");
-  const isMorningRush = timeStr >= "08:00" && timeStr <= "08:30";
-  const isEvening = timeStr >= "17:30" && timeStr <= "18:00";
-  const isNightTime = timeStr >= "18:00" || timeStr < "06:00";
-
-  useEffect(() => {
-    // Logic for auto switching could be added here if desired.
-  }, [isNightTime]);
-
-  const weatherForecast = useMemo(() => {
-    const types = ['sunny', 'cloudy', 'rainy', 'snowy'] as const;
-    return Array.from({ length: 6 }).map((_, i) => {
-      const date = addDays(new Date(), i);
-      const hash = date.getDate() + date.getMonth();
-      const type = types[hash % 4];
-      let tempDay = date.getMonth() <= 2 || date.getMonth() >= 10 ? 5 + (hash % 10) : 20 + (hash % 10);
-      let tempNight = date.getMonth() <= 2 || date.getMonth() >= 10 ? -2 + (hash % 5) : 15 + (hash % 5);
-      return { date, type, tempDay, tempNight };
-    });
-  }, []);
-
-  const getWeatherIcon = (type: string) => {
-    switch (type) {
-      case 'sunny': return <Sun size={16} className="text-amber-500" />;
-      case 'cloudy': return <Cloud size={16} className="text-gray-400" />;
-      case 'rainy': return <CloudRain size={16} className="text-blue-400" />;
-      case 'snowy': return <Snowflake size={16} className="text-cyan-300" />;
-      default: return <Sun size={16} className="text-amber-500" />;
-    }
-  };
-
-  // PWA Installation state
+  // PWA Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
-    // Register Service Worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW Registration failed:', err));
-    }
-
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -207,534 +109,499 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      try {
-        const [fetchedUsers, trips, prices, appSettings, userTracks] = await Promise.all([
-          getApprovedUsers(),
-          getAllTrips(),
-          getFuelPrices(),
-          getAppSettings(),
-          user ? getDrivingTracks(user.uid, format(new Date(), "yyyy-MM")).catch(err => {
-            console.error("Driving tracks fetch failed (likely missing index):", err);
-            return [];
-          }) : Promise.resolve([])
-        ]);
-
-        let tracks = userTracks as DrivingTrack[];
-        if (tracks.length === 0) {
-          tracks = await getAllDrivingTracks(format(new Date(), "yyyy-MM"));
-        }
-
-        setMembers(fetchedUsers);
-        setAllTrips(trips);
-        setFuelPrices(prices);
-        setSettings(appSettings);
-        setDrivingTracks(tracks);
-
-      } catch (error) {
-        console.error("Error fetching initial dashboard data:", error);
-      } finally {
-        setLoading(false);
-        setInitialFetchDone(true);
-      }
-    };
-    fetchInitialData();
-  }, [user]);
-
-  useEffect(() => {
-    const calculateDashboardStats = async () => {
-      if (!user) return;
-
-      setLoading(true);
-      try {
-        // If data is not ready yet, just reset and wait
-        if (!initialFetchDone) return;
-
-        if (allTrips.length === 0 || members.length === 0) {
-          setTodayTrip(null);
-          setTodayParticipants([]);
-          setStats(s => ({ ...s, totalTrips: 0, monthlyDebt: 0, monthlyCredit: 0 }));
-          return;
-        }
-
-        const todayStr = format(new Date(), "yyyy-MM-dd");
-        const selectedMonthStr = format(selectedDate, "yyyy-MM");
-        const monthlyTrips = allTrips.filter(t => t.date.startsWith(selectedMonthStr));
-        let today = allTrips.find(t => t.date === todayStr);
-
-        if (!today) {
-          const pastTrips = allTrips.filter(t => t.date < todayStr).sort((a, b) => b.date.localeCompare(a.date));
-          if (pastTrips.length > 0) {
-            today = { ...pastTrips[0], date: todayStr, isInherited: true } as any;
-            delete (today as any).id;
-          }
-        }
-
-        const dailyFee = settings.dailyFee;
-        const getFee = (type?: string) => type === 'full' || !type ? dailyFee : dailyFee / 2;
-        const debt = monthlyTrips.filter(t => t.participants.includes(user.uid) && t.driverUid !== user.uid).reduce((acc, t) => acc + getFee(t.type), 0);
-        const credit = monthlyTrips.filter(t => t.driverUid === user.uid).reduce((acc, trip) => acc + (trip.participants.length * getFee(trip.type)), 0);
-
-        let driverName = "Belli Değil";
-        let todayDetails: { profile: UserProfile, isDriver: boolean }[] = [];
-
-        if (today) {
-          setTodayTrip(today);
-          const driver = members.find(u => u.uid === today.driverUid);
-          driverName = driver ? driver.name : "Bilinmiyor";
-          setHasJoined(today.participants.includes(user.uid));
-          const participantProfiles = members.filter(u => today.participants.includes(u.uid));
-          todayDetails = participantProfiles.map(p => ({ profile: p, isDriver: p.uid === today.driverUid })).sort((a, b) => (a.isDriver === b.isDriver) ? 0 : a.isDriver ? -1 : 1);
-        } else {
-          setTodayTrip(null);
-          setHasJoined(false);
-        }
-
-        setTodayParticipants(todayDetails);
-        setStats({ totalTrips: monthlyTrips.length, monthlyDebt: debt, monthlyCredit: credit, nextDriver: driverName });
-      } catch (error) {
-        console.error("Error dashboard stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    calculateDashboardStats();
-  }, [user, selectedDate, allTrips, members]);
-
-
-
-  const handleUpdateTrip = async (updates: { driverUid?: string, participants?: string[] }) => {
-    if (!user) return;
-    setIsUpdatingDriver(true);
+  // Data fetching
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const todayStr = format(new Date(), "yyyy-MM-dd");
-      const baseTrip = todayTrip || { date: todayStr, groupId: "main-group", driverUid: "", participants: [], totalCollected: 0, type: "full" };
-      const updatedTrip = { ...baseTrip, ...updates };
-      if ((baseTrip as any).isInherited) delete (updatedTrip as any).isInherited;
-      await saveTrip(updatedTrip);
-      toast.success("Yolculuk güncellendi.");
-      if (updates.driverUid) setIsDriverDialogOpen(false);
-      const [updatedTrips, updatedUsers] = await Promise.all([getAllTrips(), getApprovedUsers()]);
-      setAllTrips(updatedTrips);
-      setMembers(updatedUsers);
+      const [users, trips, appSettings] = await Promise.all([
+        getApprovedUsers(),
+        getAllTrips(),
+        getAppSettings()
+      ]);
+      setMembers(users);
+      setAllTrips(trips);
+      setSettings(appSettings);
     } catch (error) {
-      console.error("Error updating trip:", error);
-      toast.error("Hata oluştu.");
+      console.error("Error fetching data:", error);
+      // Don't toast if it's just a permission error for non-logged in users?
+      // Firebase rules might block getAllTrips if not logged in.
+      // Let's assume trips should be public for viewing.
     } finally {
-      setIsUpdatingDriver(false);
+      setLoading(false);
     }
   };
 
-  const toggleParticipant = (uid: string) => {
-    const currentParticipants = todayTrip?.participants || [];
-    const newParticipants = currentParticipants.includes(uid) ? currentParticipants.filter((id: string) => id !== uid) : [...currentParticipants, uid];
-    handleUpdateTrip({ participants: newParticipants });
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const isAdmin = profile?.role === 'admin';
+
+  // Calendar logic
+  const monthStart = startOfMonth(selectedDate);
+  const monthEnd = endOfMonth(selectedDate);
+  const calendarDays = eachDayOfInterval({
+    start: startOfWeek(monthStart, { weekStartsOn: 1 }),
+    end: endOfWeek(monthEnd, { weekStartsOn: 1 })
+  });
+
+  const monthTrips = useMemo(() => {
+    const monthStr = format(selectedDate, "yyyy-MM");
+    return allTrips.filter(t => t.date.startsWith(monthStr));
+  }, [allTrips, selectedDate]);
+
+  // Debt calculation logic (mini version)
+  const stats = useMemo(() => {
+    if (members.length === 0) return [];
+
+    const dailyFee = settings.dailyFee;
+    const results = members.map(member => {
+      let driverDays = 0;
+      let passengerDays = 0;
+      let debt = 0;
+      let credit = 0;
+
+      monthTrips.forEach(trip => {
+        const isDriver = trip.driverUid === member.uid;
+        const isParticipant = trip.participants?.includes(member.uid);
+
+        if (isDriver) {
+          driverDays++;
+          // Credit calculation: everyone else pays this member
+          const othersCount = trip.participants.filter(pid => pid !== member.uid).length;
+          credit += othersCount * dailyFee;
+        } else if (isParticipant) {
+          passengerDays++;
+          // Debt: this member pays the driver
+          debt += dailyFee;
+        }
+      });
+
+      return {
+        name: member.name,
+        uid: member.uid,
+        driverDays,
+        passengerDays,
+        net: credit - debt
+      };
+    }).filter(r => r.net !== 0 || r.driverDays > 0 || r.passengerDays > 0).sort((a, b) => b.net - a.net);
+
+    return results;
+  }, [members, monthTrips, settings.dailyFee]);
+
+  const handleCellClick = (day: Date) => {
+    if (!isAdmin) return;
+    setActiveDay(day);
+    setIsDriverDialogOpen(true);
   };
+
+  const handleUpdateTripData = async (uid: string, type: 'driver' | 'participant') => {
+    if (!activeDay || !isAdmin) return;
+    setIsUpdating(true);
+    try {
+      const dateStr = format(activeDay, "yyyy-MM-dd");
+      const existingTrip = allTrips.find(t => t.date === dateStr);
+
+      if (type === 'driver' && uid === "") {
+        await deleteTrip(dateStr);
+        setAllTrips(prev => prev.filter(t => t.date !== dateStr));
+        toast.success("Gün temizlendi.");
+        return;
+      }
+
+      let driverUid = existingTrip?.driverUid || "";
+      let participants = existingTrip?.participants || members.map(m => m.uid);
+
+      if (type === 'driver') {
+        driverUid = uid;
+        // If becomes driver, must be a participant too
+        if (!participants.includes(uid)) {
+          participants.push(uid);
+        }
+      } else {
+        if (participants.includes(uid)) {
+          // Only allowed to remove if NOT the driver
+          if (driverUid !== uid) {
+            participants = participants.filter(id => id !== uid);
+          } else {
+            toast.error("Şoför yolcu listesinden çıkarılamaz.");
+            setIsUpdating(false);
+            return;
+          }
+        } else {
+          participants.push(uid);
+        }
+      }
+
+      const newTrip: Trip = {
+        date: dateStr,
+        groupId: "main-group",
+        driverUid: driverUid,
+        participants: participants,
+        totalCollected: 0,
+        type: 'full'
+      };
+
+      await saveTrip(newTrip);
+      setAllTrips(prev => {
+        const index = prev.findIndex(t => t.date === dateStr);
+        if (index > -1) {
+          const next = [...prev];
+          next[index] = newTrip;
+          return next;
+        } else {
+          return [...prev, newTrip];
+        }
+      });
+      // Keep dialog open if we want to toggle more participants?
+      // The user said "detayda arka tarafa tüm araba yla giden kişile listesi olacak"
+    } catch (error) {
+      console.error("Error updating trip:", error);
+      toast.error("Hata oluştu");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserName.trim() || !isAdmin) return;
+    setIsCreatingUser(true);
+    try {
+      await createManualUser(newUserName.trim());
+      toast.success("Yeni yolcu eklendi.");
+      setNewUserName("");
+      setIsAddUserOpen(false);
+      fetchData();
+    } catch (error) {
+      toast.error("Kullanıcı eklenemedi.");
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  const nextMonth = () => setSelectedDate(addMonths(selectedDate, 1));
+  const prevMonth = () => setSelectedDate(subMonths(selectedDate, 1));
+
+  const activeTripData = useMemo(() => {
+    if (!activeDay) return null;
+    return allTrips.find(t => t.date === format(activeDay, "yyyy-MM-dd"));
+  }, [activeDay, allTrips]);
 
   return (
     <AppLayout>
-      <div className={cn("relative space-y-8 px-2 pb-32 transition-all duration-300 min-h-screen", isEvening && !isDarkMode ? "bg-gradient-to-b from-indigo-900/10 to-transparent" : "")}>
+      <div className="flex flex-col gap-6 px-2 pb-24 max-w-md mx-auto min-h-screen">
 
-        {/* Header Section */}
-        <section className="flex flex-col gap-6 pt-0">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3 group">
-                <div className="relative p-2 rounded-2xl bg-card border border-border shadow-sm">
-                  <Gauge size={24} className="text-primary" strokeWidth={2.5} />
-                </div>
-                <h1 className="text-2xl font-black italic tracking-tighter transform -skew-x-6 text-foreground">
-                  YOL<span className="text-primary">TAKİP</span>
-                </h1>
-              </div>
-              <div>
-                <h2 className="text-3xl font-black tracking-tight text-foreground">Merhaba, {profile?.name?.split(' ')[0]} 👋</h2>
-                <p className="text-sm font-medium mt-1 uppercase tracking-widest text-muted-foreground">
-                  {format(currentTime, "d MMMM yyyy, EEEE", { locale: tr })}
-                </p>
-              </div>
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col">
+            <h1 className="text-xl font-black italic tracking-tighter text-foreground transform -skew-x-6">
+              YOL<span className="text-primary">TAKİP</span>
+            </h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
+              ARAÇ PAYLAŞIM SİSTEMİ
+            </p>
+          </div>
 
-            {/* Middle Section: Clock and Profile Actions */}
-            <div className="flex flex-col items-center gap-2 mb-1">
-              <div className="flex items-center gap-3 p-2 bg-card/50 backdrop-blur-sm rounded-3xl border border-border shadow-sm">
-                <div className="flex items-center gap-2 pl-2 pr-1 border-r border-border">
-                  <span className="text-sm font-black text-primary font-mono tracking-wider">{format(currentTime, "HH:mm:ss")}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button onClick={toggleDarkMode} variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted transition-all">
-                    {isDarkMode ? <Sun size={16} className="text-yellow-400" fill="currentColor" /> : <Moon size={16} className="text-gray-400" fill="currentColor" />}
-                  </Button>
-
-                  {/* PWA Install Button */}
-                  {deferredPrompt && (
-                    <Button
-                      onClick={handleInstallApp}
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all animate-bounce"
-                      title="Ana Ekrana Ekle"
-                    >
-                      <Smartphone size={16} strokeWidth={2.5} />
-                    </Button>
-                  )}
-
-                  {user && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 rounded-full p-0 border-2 border-border shadow-sm overflow-hidden relative">
-                          <Avatar className="h-full w-full">
-                            <AvatarImage src={user.photoURL || ""} />
-                            <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          {profile?.role === 'admin' && (
-                            <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground p-0.5 rounded-full border border-background scale-75">
-                              <Shield size={10} strokeWidth={3} />
-                            </div>
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56 rounded-2xl bg-card border-border" align="center">
-                        <DropdownMenuItem asChild><Link href="/admin"><Shield className="mr-2 h-4 w-4" /> Yönetici Paneli</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link href="/profile"><User className="mr-2 h-4 w-4" /> Profil Ayarları</Link></DropdownMenuItem>
-                        <DropdownMenuItem onClick={logout} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /> Çıkış Yap</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {profile?.role === 'admin' && (
-                    <Link href="/admin">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all ml-1" title="Hızlı Yönetici Girişi">
-                        <Shield size={16} strokeWidth={2.5} />
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {fuelPrices && (
-              <div className="flex items-center gap-4 p-4 rounded-[2rem] border shadow-lg shadow-blue-900/5 bg-card border-border">
-                <div className="flex flex-col pr-4 border-r border-border">
-                  <span className="text-[10px] font-black text-primary uppercase">Ankara</span>
-                  <span className="text-xs font-bold text-muted-foreground underline decoration-primary/30">Yakıt</span>
-                </div>
-                <div className="flex items-center gap-6">
-                  {[
-                    { label: 'Benzin', key: 'benzin' as const, color: 'text-emerald-500' },
-                    { label: 'Motorin', key: 'motorin' as const, color: 'text-amber-500' },
-                    { label: 'LPG', key: 'lpg' as const, color: 'text-blue-500' }
-                  ].map((fuel) => (
-                    <div key={fuel.label} className="flex flex-col">
-                      <span className={cn("text-[9px] font-black uppercase", fuel.color)}>{fuel.label}</span>
-                      <span className="text-base font-black tracking-tighter text-foreground">
-                        ₺{fuelPrices[fuel.key]?.toFixed(2) || "0.00"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          <div className="flex items-center gap-2">
+            {deferredPrompt && (
+              <Button
+                onClick={handleInstallApp}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full bg-primary/10 text-primary border border-primary/20 animate-bounce"
+              >
+                <Smartphone size={16} />
+              </Button>
             )}
-          </div>
-
-          {/* Namaz Widget */}
-          <div className="hidden xl:flex items-center justify-center p-2 rounded-2xl border backdrop-blur-md h-[72px] bg-card/60 border-border shadow-sm">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4 pr-4 border-r border-border">
-                <Moon size={14} className="text-emerald-500" />
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-black uppercase text-primary/70 tracking-tighter">İNCELENEN VAKİT</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-foreground">Ankara</span>
-                    <div className="bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20 flex items-center gap-1">
-                      <Clock size={10} className="text-primary animate-pulse" />
-                      <span className="text-[10px] font-black text-primary font-mono tabular-nums">{countdown}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {prayerTimes.map((v, i) => {
-                  const isNext = i === nextPrayerIdx;
-                  return (
-                    <div key={v.n} className={cn(
-                      "flex flex-col items-center px-3 py-1.5 rounded-2xl transition-all duration-500",
-                      isNext
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105"
-                        : "bg-card/40 hover:bg-card/80 border border-transparent hover:border-border"
-                    )}>
-                      <span className={cn("text-[8px] font-black uppercase tracking-widest", isNext ? "text-primary-foreground/70" : "text-muted-foreground")}>{v.n}</span>
-                      <span className={cn("text-[11px] font-black", isNext ? "text-primary-foreground" : "text-foreground")}>{v.t}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Weather Forecast */}
-          <div className="w-full backdrop-blur-md rounded-2xl border p-3 overflow-x-auto bg-card/60 border-border shadow-sm">
-            <div className="flex justify-between items-center min-w-max gap-2 w-full">
-              {weatherForecast.map((day, i) => (
-                <div key={i} className={cn("flex flex-col items-center justify-center gap-1 flex-1 p-2 rounded-xl", i === 0 ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-muted/50")}>
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">{i === 0 ? "Bugün" : format(day.date, "EEE", { locale: tr })}</span>
-                  {getWeatherIcon(day.type)}
-                  <span className="text-[10px] font-black text-foreground">{day.tempDay}°</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Home Content */}
-        <div className="flex flex-col gap-6">
-          {/* Trip Summary */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <div className="bg-primary/10 p-1.5 rounded-lg text-primary"><TrendingUp size={16} strokeWidth={3} /></div>
-              <h2 className="text-base font-black tracking-tight text-foreground">Bugünün Yolculuğu</h2>
-            </div>
-            <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[2.5rem] overflow-hidden bg-card">
-              {loading ? (
-                <div className="p-12 flex flex-col items-center justify-center gap-4 text-muted-foreground">
-                  <LoaderIcon className="animate-spin text-primary" size={32} />
-                  <span className="text-xs font-bold animate-pulse">Yolculuk bilgisi yükleniyor...</span>
-                </div>
-              ) : todayTrip ? (
-                <div className="p-6 flex flex-col md:flex-row gap-6 items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex flex-col items-center justify-center font-black">
-                      <span className="text-[10px] uppercase opacity-70">{format(new Date(), "EEE", { locale: tr })}</span>
-                      <span className="text-xl">{format(new Date(), "d")}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">{format(new Date(), "MMMM", { locale: tr })}</span>
-                      <h3 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">AKTİF YOLCULUK</h3>
-                    </div>
-                  </div>
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                    <div className="bg-amber-100/40 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-200/60 dark:border-amber-700/30 flex items-center gap-4 transition-all hover:bg-amber-100/60">
-                      <div className="bg-amber-500 dark:bg-amber-600 p-2.5 rounded-xl text-white shadow-sm">
-                        <Car size={20} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-[0.15em] mb-0.5">ŞÖFÖR</span>
-                        <span className="text-sm font-black text-slate-900 dark:text-slate-50 leading-tight">{members.find(m => m.uid === todayTrip.driverUid)?.name || "Bilinmiyor"}</span>
-                      </div>
-                    </div>
-                    <div className="bg-indigo-100/40 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-200/60 dark:border-indigo-700/30 flex items-center gap-4 transition-all hover:bg-indigo-100/60">
-                      <div className="bg-indigo-500 dark:bg-indigo-600 p-2.5 rounded-xl text-white shadow-sm">
-                        <Users size={20} />
-                      </div>
-                      <div className="flex flex-col truncate">
-                        <span className="text-[9px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-[0.15em] mb-0.5">YOLCULAR</span>
-                        <span className="text-sm font-black text-slate-900 dark:text-slate-50 truncate leading-tight">
-                          {todayTrip.participants?.map((id: string) => members.find(m => m.uid === id)?.name).filter(Boolean).join(", ")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                    {todayTrip.isInherited && (
-                      <Button
-                        onClick={() => handleUpdateTrip({})}
-                        className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest px-6 shadow-lg shadow-primary/20"
-                        disabled={isUpdatingDriver}
-                      >
-                        {isUpdatingDriver ? <LoaderIcon className="animate-spin" size={14} /> : "Günü Onayla"}
-                      </Button>
-                    )}
-                    <Button onClick={() => setIsSeatingPlanOpen(true)} className="flex-1 rounded-xl bg-secondary text-secondary-foreground border border-border hover:bg-muted font-bold uppercase text-[10px] tracking-widest px-4">Oturma Planı</Button>
-                    <Button onClick={() => setIsDriverDialogOpen(true)} className="flex-1 rounded-xl bg-secondary text-secondary-foreground border border-border hover:bg-muted font-bold uppercase text-[10px] tracking-widest px-4">Düzenle</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 text-center flex flex-col items-center gap-4">
-                  <Info size={32} className="text-muted-foreground" />
-                  <p className="text-sm font-bold text-muted-foreground">Henüz yolculuk planlanmamış.</p>
-                  <Button onClick={() => setIsDriverDialogOpen(true)} variant="outline" className="rounded-xl border-border text-foreground hover:bg-muted">Şimdi Planla</Button>
-                </div>
-              )}
-            </Card>
-
-            {/* Live Tracking Section */}
-            <LiveTrackingCard />
-          </div>
-
-
-          {/* New Driving Tracks Section */}
-          {drivingTracks.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-2 px-1">
-                <div className="flex items-center gap-2">
-                  <div className="bg-indigo-100 dark:bg-indigo-900/20 p-1.5 rounded-lg text-indigo-600"><Clock size={16} strokeWidth={3} /></div>
-                  <h2 className="text-base font-black tracking-tight text-foreground">Son Sürüşler (GPS)</h2>
-                </div>
-                <Link href="/reports?tab=gps" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">TÜMÜ</Link>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {drivingTracks.slice(0, 3).map((track, idx) => (
-                  <Link href={`/reports?tab=gps&date=${track.date}`} key={idx}>
-                    <Card className="border-border shadow-sm bg-card hover:shadow-md transition-all overflow-hidden group h-full">
-                      <div className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={cn("p-2.5 rounded-xl", track.type === 'morning' ? "bg-amber-100 text-amber-600 dark:bg-amber-900/20" : "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20")}>
-                            {track.type === 'morning' ? <Navigation size={18} /> : <Car size={18} />}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-extrabold text-xs text-foreground">{format(parseISO(track.date), "d MMM, EEE", { locale: tr })}</span>
-                              <span className="px-1 py-0.5 rounded-md bg-muted text-muted-foreground text-[7px] font-black">
-                                {track.type === 'morning' ? "GİDİŞ" : "DÖNÜŞ"}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground mt-0.5">
-                              <span>{track.startTime} - {track.endTime}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right flex items-center gap-2">
-                          <div className="text-sm font-black text-primary">{track.distanceKm.toFixed(1)} <span className="text-[8px]">KM</span></div>
-                          <ArrowUpRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                        </div>
-                      </div>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Actions & Analysis */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="bg-primary/10 p-1.5 rounded-lg text-primary"><Plus size={16} strokeWidth={3} /></div>
-                <h2 className="text-base font-black tracking-tight text-foreground">Hızlı İşlemler</h2>
-              </div>
-              <div className="grid gap-3">
-                {[
-                  { t: "Takvim", i: CalendarIcon, c: "text-blue-600", b: "bg-blue-50 dark:bg-blue-900/10", h: "/calendar" },
-                  { t: "Grup", i: Users, c: "text-indigo-600", b: "bg-indigo-50 dark:bg-indigo-900/10", h: "/group" },
-                  { t: "Hesapla", i: Calculator, c: "text-amber-600", b: "bg-amber-50 dark:bg-amber-900/10", h: "/settlement" }
-                ].map(item => (
-                  <Link key={item.t} href={item.h}>
-                    <div className="bg-card p-4 rounded-3xl border border-border shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
-                      <div className="flex items-center gap-4">
-                        <div className={cn("p-3 rounded-2xl", item.b, item.c)}><item.i size={22} strokeWidth={2.5} /></div>
-                        <span className="font-black text-foreground">{item.t}</span>
-                      </div>
-                      <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="bg-green-100 dark:bg-green-900/20 p-1.5 rounded-lg text-green-600"><TrendingUp size={16} strokeWidth={3} /></div>
-                <h2 className="text-base font-black tracking-tight text-foreground">Analiz & Trafik</h2>
-              </div>
-              <div className="bg-card rounded-[2.5rem] p-8 text-foreground relative overflow-hidden shadow-2xl h-full flex flex-col justify-between min-h-[300px] border border-border">
-                <div className="relative z-10">
-                  <MapIcon size={24} className="text-primary mb-6" />
-                  <h3 className="text-2xl font-black mb-3 italic transform -skew-x-6">TRAFİK & ROTA</h3>
-                  <p className="text-xs text-muted-foreground font-medium">Güncel Ankara trafiğine göre en hızlı güzergâh.</p>
-                </div>
-                <div className="space-y-3 relative z-10 w-full mt-6">
-                  <Link href="/map" className="block w-full">
-                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl p-6 font-black uppercase tracking-wider w-full shadow-lg">ROTA ANALİZİ</Button>
-                  </Link>
-                  <Button
-                    onClick={() => {
-                      const hour = new Date().getHours();
-                      const min = new Date().getMinutes();
-                      const isEv = hour > 17 || (hour === 17 && min >= 30);
-                      const lat = isEv ? 39.9475578 : 39.9168615;
-                      const lng = isEv ? 32.6642409 : 32.7900571;
-                      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
-                    }}
-                    className="bg-green-600 hover:bg-green-700 rounded-2xl p-6 font-black uppercase tracking-wider w-full shadow-lg border border-green-500"
-                  >
-                    <Navigation size={18} className="mr-2" /> NAVİGASYON
+            {user ? (
+              <div className="flex gap-1">
+                {isAdmin && (
+                  <Button onClick={() => setIsAddUserOpen(true)} variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-emerald-100/50 text-emerald-600">
+                    <UserPlus size={16} />
                   </Button>
-                </div>
+                )}
+                <Link href="/admin">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-muted">
+                    <Settings size={16} />
+                  </Button>
+                </Link>
               </div>
-            </div>
-          </div>
-
-          {/* Reports Section */}
-          <div className="space-y-4 pt-8">
-            <div className="flex items-center gap-2">
-              <div className="bg-amber-100 dark:bg-amber-900/20 p-1.5 rounded-lg text-amber-600"><Fuel size={16} strokeWidth={3} /></div>
-              <h2 className="text-base font-black tracking-tight text-foreground">Rapor Analizleri</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link href="/reports?tab=fuel" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center mb-4 text-amber-600"><Fuel size={24} /></div>
-                <h3 className="text-lg font-black text-foreground mb-1">Yakıt Raporu</h3>
-                <p className="text-xs text-muted-foreground font-bold">Maliyet ve tüketim özeti.</p>
-              </Link>
-              <Link href="/reports?tab=gps" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center mb-4 text-indigo-600"><Navigation size={24} /></div>
-                <h3 className="text-lg font-black text-foreground mb-1">GPS Raporu</h3>
-                <p className="text-xs text-muted-foreground font-bold">Gidilen yollar ve KM verisi.</p>
-              </Link>
-              <Link href="/group" className="block p-6 rounded-[2.5rem] bg-card border border-border shadow-lg hover:shadow-xl transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mb-4 text-blue-600"><Users size={24} /></div>
-                <h3 className="text-lg font-black text-foreground mb-1">Üye Listesi</h3>
-                <p className="text-xs text-muted-foreground font-bold">Takım arkadaşların.</p>
-              </Link>
-            </div>
+            ) : (
+              <Button onClick={signInWithGoogle} variant="ghost" className="h-8 px-3 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase">
+                <Shield size={12} className="mr-1" /> GİRİŞ
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Dialogs */}
-        <Dialog open={isSeatingPlanOpen} onOpenChange={setIsSeatingPlanOpen}>
-          <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] overflow-y-auto rounded-[3rem] p-4 bg-card border-border shadow-2xl">
-            <SeatingPlan
-              driver={members.find(m => m.uid === todayTrip?.driverUid)}
-              participants={todayTrip?.participants?.map((id: string) => members.find(m => m.uid === id)).filter(Boolean) as UserProfile[] || []}
-              className="bg-muted/50"
-            />
-            <div className="pt-6 flex justify-center"><Button onClick={() => setIsSeatingPlanOpen(false)} variant="ghost" className="rounded-xl font-bold text-foreground hover:bg-muted">KAPAT</Button></div>
-          </DialogContent>
-        </Dialog>
+        {/* Date Controls */}
+        <div className="flex items-center justify-between bg-card p-1 rounded-2xl border border-border shadow-sm">
+          <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10" onClick={prevMonth}>
+            <ChevronLeft size={20} />
+          </Button>
+          <div className="text-sm font-black uppercase tracking-tight">
+            {format(selectedDate, "MMMM yyyy", { locale: tr })}
+          </div>
+          <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10" onClick={nextMonth}>
+            <ChevronRight size={20} />
+          </Button>
+        </div>
 
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1.5">
+          {["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"].map(d => (
+            <div key={d} className="text-[10px] font-black text-center text-muted-foreground pb-1 uppercase">{d}</div>
+          ))}
+          {calendarDays.map((day, i) => {
+            const dateStr = format(day, "yyyy-MM-dd");
+            const trip = allTrips.find(t => t.date === dateStr);
+            const driver = trip ? members.find(m => m.uid === trip.driverUid) : null;
+            const isCurrentMonth = day.getMonth() === selectedDate.getMonth();
+            const isTodayDay = isToday(day);
+            const participantsNames = trip?.participants
+              ? members.filter(m => trip.participants.includes(m.uid)).map(m => m.name).join(", ")
+              : "";
+
+            return (
+              <motion.div
+                key={i}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleCellClick(day)}
+                className={cn(
+                  "relative aspect-square rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all group",
+                  !isCurrentMonth ? "opacity-20 bg-muted/20 border-transparent" : "bg-card border-border shadow-sm",
+                  isTodayDay && "ring-2 ring-primary ring-offset-2 ring-offset-background z-10",
+                  driver && getPersonColor(driver.uid) + " border-transparent"
+                )}
+              >
+                {/* Tooltip */}
+                {participantsNames && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/80 backdrop-blur-md text-white text-[9px] font-bold rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[7px] text-white/50 uppercase tracking-widest mb-1">YOLCU LİSTESİ</span>
+                      {participantsNames.split(", ").map((name, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5">
+                          <div className="w-1 h-1 rounded-full bg-primary" />
+                          <span>{name}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Arrow */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-black/80" />
+                  </div>
+                )}
+
+                <span className={cn(
+                  "text-xs font-black",
+                  driver ? "text-white" : "text-foreground"
+                )}>
+                  {format(day, "d")}
+                </span>
+                {driver && (
+                  <span className="text-[7px] font-black text-white/90 uppercase truncate w-[90%] text-center leading-none mt-0.5">
+                    {driver.name.split(' ')[0]}
+                  </span>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Mini Debt List */}
+        <div className="space-y-3 mt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 px-1">
+              <div className="bg-amber-100 p-1.5 rounded-lg text-amber-600"><Wallet size={14} strokeWidth={3} /></div>
+              <h2 className="text-sm font-black tracking-tight text-foreground uppercase">HESAP ÖZETİ</h2>
+              <span className="text-[9px] font-black text-muted-foreground uppercase ml-1 opacity-50">{format(selectedDate, "MMMM", { locale: tr })}</span>
+            </div>
+            <Link href="/settlement-detail">
+              <Button className="text-[9px] font-black bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground px-4 h-9 rounded-2xl uppercase tracking-widest shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
+                DETAYLAR <ChevronRight size={14} strokeWidth={3} />
+              </Button>
+            </Link>
+          </div>
+
+          <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[2rem] overflow-hidden bg-card p-4">
+            {loading ? (
+              <div className="flex items-center justify-center p-8">
+                <LoaderIcon className="animate-spin text-primary" size={24} />
+              </div>
+            ) : stats.length > 0 ? (
+              <div className="space-y-2">
+                {stats.map((stat) => (
+                  <div key={stat.uid} className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 border border-transparent hover:border-border transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-2 h-2 rounded-full", stat.net > 0 ? "bg-emerald-500" : stat.net < 0 ? "bg-rose-500" : "bg-muted-foreground/30")} />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-foreground uppercase">{stat.name}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[8px] font-bold text-primary px-1 bg-primary/5 rounded uppercase">{stat.driverDays} Şoför</span>
+                          <span className="text-[8px] font-bold text-orange-500 px-1 bg-orange-500/5 rounded uppercase">{stat.passengerDays} Yolcu</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "text-xs font-black px-3 py-1.5 rounded-xl shadow-sm min-w-[60px] text-center",
+                      stat.net > 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                    )}>
+                      {stat.net > 0 ? `+₺${stat.net}` : `₺${stat.net}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center flex flex-col items-center gap-3">
+                <div className="p-4 rounded-full bg-muted/50">
+                  <Info size={32} className="text-muted-foreground opacity-20" />
+                </div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight tracking-widest max-w-[200px]">Bu ay için henüz ödeme kaydı bulunamadı.</p>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Footer Info */}
+        <div className="flex flex-col gap-1 items-center opacity-40 mt-4">
+          <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest">
+            YOLTAKİP v2.0
+          </p>
+          {!isAdmin && (
+            <p className="text-[8px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em]">
+              Düzenleme Yapmak İçin Giriş Yapın
+            </p>
+          )}
+        </div>
+
+        {/* Passenger Management Dialog (Admin Only) */}
         <Dialog open={isDriverDialogOpen} onOpenChange={setIsDriverDialogOpen}>
           <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-0 overflow-hidden border-border shadow-2xl bg-card">
-            <div className="bg-primary p-6 text-primary-foreground"><DialogHeader><DialogTitle className="text-xl font-black">Yolculuk Düzenle</DialogTitle></DialogHeader></div>
+            <div className="bg-primary p-6 text-primary-foreground">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black flex items-center gap-2">
+                  <CalendarIcon size={20} />
+                  {activeDay && format(activeDay, "d MMMM", { locale: tr })}
+                </DialogTitle>
+              </DialogHeader>
+            </div>
             <div className="p-6 space-y-6">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">ŞOFÖR</label>
-                <Select onValueChange={(uid) => handleUpdateTrip({ driverUid: uid })} value={todayTrip?.driverUid || ""}>
-                  <SelectTrigger className="w-full h-14 rounded-2xl bg-muted border-transparent font-bold text-foreground"><SelectValue placeholder="Şoför Seç..." /></SelectTrigger>
-                  <SelectContent className="rounded-2xl border-border bg-card">
-                    {members.map(m => (
-                      <SelectItem key={m.uid} value={m.uid} className="rounded-xl font-bold py-3 text-foreground focus:bg-muted">
-                        <div className="flex items-center gap-2"><Avatar className="h-6 w-6"><AvatarImage src={m.photoURL} /><AvatarFallback>{m.name?.charAt(0)}</AvatarFallback></Avatar>{m.name}</div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">YOLCULAR</label>
-                <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">ŞOFÖR SEÇİN</h3>
+                  {activeTripData && <span className="text-[9px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">AKTİF</span>}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div
+                    onClick={() => handleUpdateTripData("", 'driver')}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-3 rounded-2xl border border-dashed transition-all cursor-pointer opacity-80 hover:opacity-100",
+                      (!activeTripData || activeTripData?.driverUid === "")
+                        ? "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                        : "bg-muted/50 border-transparent"
+                    )}
+                  >
+                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-muted mb-2">
+                      <Users size={16} />
+                    </div>
+                    <span className="text-[9px] font-black uppercase">TEMİZLE</span>
+                  </div>
                   {members.map(m => (
-                    <div key={m.uid} onClick={() => toggleParticipant(m.uid)} className={cn("flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer", todayTrip?.participants?.includes(m.uid) ? "bg-primary/10 border-primary/20" : "bg-muted/50 border-transparent opacity-60")}>
-                      <div className="flex items-center gap-3"><Avatar className="h-8 w-8"><AvatarImage src={m.photoURL} /></Avatar><span className="text-sm font-bold text-foreground">{m.name}</span></div>
-                      {todayTrip?.participants?.includes(m.uid) && <div className="bg-primary text-primary-foreground p-1 rounded-full"><CheckCircle2 size={12} /></div>}
+                    <div
+                      key={m.uid}
+                      onClick={() => handleUpdateTripData(m.uid, 'driver')}
+                      className={cn(
+                        "flex flex-col items-center p-3 rounded-2xl border transition-all cursor-pointer",
+                        activeTripData?.driverUid === m.uid
+                          ? "bg-primary text-primary-foreground border-primary shadow-lg ring-2 ring-primary/20"
+                          : "bg-muted/50 border-transparent hover:bg-muted"
+                      )}
+                    >
+                      <Avatar className="h-10 w-10 border-2 border-background mb-2">
+                        <AvatarImage src={m.photoURL} />
+                        <AvatarFallback className="text-[10px]">{m.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-[9px] font-black truncate w-full text-center uppercase">{m.name.split(' ')[0]}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-primary-foreground shadow-lg shadow-primary/20">KAPAT</Button>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                    <Users size={12} /> YOLCULAR
+                  </h3>
+                  <span className="text-[9px] font-black text-muted-foreground uppercase">
+                    {activeTripData?.participants?.length || 0} KİŞİ
+                  </span>
+                </div>
+                <div className="grid gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                  {members.map(m => (
+                    <div
+                      key={m.uid}
+                      onClick={() => handleUpdateTripData(m.uid, 'participant')}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-2xl border transition-colors cursor-pointer",
+                        activeTripData?.participants?.includes(m.uid)
+                          ? "bg-emerald-500/10 border-emerald-500/20"
+                          : "bg-muted/30 border-transparent opacity-60"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8 border border-background">
+                          <AvatarFallback className="text-[9px]">{m.name?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs font-bold text-foreground">{m.name}</span>
+                      </div>
+                      {activeTripData?.participants?.includes(m.uid) && (
+                        <CheckCircle2 size={16} className="text-emerald-500" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-primary-foreground shadow-lg shadow-primary/20 uppercase tracking-widest">KAPAT</Button>
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Add User Dialog */}
+        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-6 border-border shadow-2xl bg-card">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tighter">YENİ YOLCU EKLE</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 pt-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">İSİM SOYİSİM</label>
+                <Input
+                  placeholder="Örn: Ahmet Yılmaz"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="h-14 rounded-2xl bg-muted border-transparent font-bold text-foreground px-6 focus:ring-primary/20"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={() => setIsAddUserOpen(false)} variant="ghost" className="flex-1 h-14 rounded-2xl font-black text-muted-foreground uppercase tracking-widest text-xs">İPTAL</Button>
+                <Button
+                  onClick={handleCreateUser}
+                  disabled={isCreatingUser || !newUserName.trim()}
+                  className="flex-1 h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-primary-foreground shadow-lg shadow-primary/20 uppercase tracking-widest"
+                >
+                  {isCreatingUser ? <LoaderIcon className="animate-spin" size={18} /> : "KAYDET"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Loading overlay for updates */}
+        {isUpdating && (
+          <div className="fixed inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <LoaderIcon className="animate-spin text-primary" size={48} />
+          </div>
+        )}
 
       </div>
     </AppLayout>

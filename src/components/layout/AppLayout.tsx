@@ -1,15 +1,15 @@
 "use client";
 
 import React from "react";
-import { Header } from "./Header";
 import { ShieldAlert } from "lucide-react";
-
 import { useAuth } from "@/context/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { GpsTracker } from "@/components/dashboard/GpsTracker";
+import { usePathname } from "next/navigation";
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { loading, profile } = useAuth();
+    const pathname = usePathname();
 
     if (loading) {
         return (
@@ -21,6 +21,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
     // Check for Approval
     const isApproved = profile?.isApproved === true || profile?.role === 'admin';
+    const isHomePage = pathname === "/";
 
     return (
         <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300">
@@ -28,7 +29,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             {/* <Header /> Removed for dashboard layout optimization */}
             <main className="flex-1 pb-20 md:pb-0 pt-4">
                 <AuthGuard>
-                    {!isApproved ? (
+                    {(!isApproved && !isHomePage) ? (
                         <div className="container mx-auto max-w-xl h-[80vh] flex flex-center items-center px-4">
                             <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl shadow-blue-900/5 text-center space-y-6 w-full animate-in zoom-in-95 duration-500">
                                 <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-3xl flex items-center justify-center text-amber-500 mx-auto">

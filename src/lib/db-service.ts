@@ -25,9 +25,14 @@ export const getUsers = async (): Promise<UserProfile[]> => {
 };
 
 export const getApprovedUsers = async (): Promise<UserProfile[]> => {
-    const q = query(collection(db, "users"), where("isApproved", "==", true));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ ...doc.data() as UserProfile }));
+    try {
+        const q = query(collection(db, "users"), where("isApproved", "==", true));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ ...doc.data() as UserProfile }));
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        return [];
+    }
 };
 
 export const updateUserProfile = async (uid: string, data: Partial<UserProfile>) => {
@@ -40,6 +45,21 @@ export const updateUserProfile = async (uid: string, data: Partial<UserProfile>)
 
 export const deleteUserProfile = async (uid: string) => {
     await deleteDoc(doc(db, "users", uid));
+};
+
+export const createManualUser = async (name: string): Promise<string> => {
+    const uid = `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newProfile: UserProfile = {
+        uid,
+        name,
+        email: "",
+        phone: "",
+        role: 'user',
+        isApproved: true,
+        createdAt: serverTimestamp() as any
+    };
+    await setDoc(doc(db, "users", uid), newProfile);
+    return uid;
 };
 
 export const getUserByEmail = async (email: string): Promise<UserProfile | null> => {
@@ -66,6 +86,12 @@ export const saveTrip = async (trip: Trip) => {
     }, { merge: true });
 };
 
+export const deleteTrip = async (date: string, groupId: string = "main-group") => {
+    const tripRef = doc(collection(db, "trips"), `${date}_${groupId}`);
+    await deleteDoc(tripRef);
+};
+
+
 export const getTripsByMonth = async (month: string) => {
     // month format "YYYY-MM"
     const tripsRef = collection(db, "trips");
@@ -83,11 +109,16 @@ export const getTripsByMonth = async (month: string) => {
 };
 
 export const getAllTrips = async (): Promise<Trip[]> => {
-    const querySnapshot = await getDocs(collection(db, "trips"));
-    return querySnapshot.docs.map(doc => {
-        const data = doc.data() as Trip;
-        return { ...data, id: doc.id };
-    });
+    try {
+        const querySnapshot = await getDocs(collection(db, "trips"));
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data() as Trip;
+            return { ...data, id: doc.id };
+        });
+    } catch (error) {
+        console.error("Error fetching all trips:", error);
+        return [];
+    }
 };
 
 // Location Services
@@ -250,8 +281,6 @@ export const getAppSettings = async (): Promise<AppSettings> => {
             return { ...DEFAULT_SETTINGS, ...settingsSnap.data() } as AppSettings;
         }
 
-        // Initialize if not exists
-        await setDoc(settingsRef, DEFAULT_SETTINGS);
         return DEFAULT_SETTINGS;
     } catch (error) {
         console.error("Error fetching settings:", error);

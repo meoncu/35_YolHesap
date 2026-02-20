@@ -47,6 +47,8 @@ import { GoogleMap, Polyline, useJsApiLoader, Marker } from '@react-google-maps/
 import { getRoute } from "@/lib/db-service"; // Ensure getRoute is imported
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { SettlementTab } from "@/components/admin/SettlementTab";
+
 
 const mapContainerStyle = {
     width: '100%',
@@ -61,7 +63,7 @@ const defaultCenter = {
 
 export default function AdminPage() {
     const { user: currentUser } = useAuth();
-    const [activeTab, setActiveTab] = useState<"users" | "routes" | "logs" | "settings">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "routes" | "logs" | "settings" | "settlement">("users");
 
 
     // Route Tracking State
@@ -308,6 +310,12 @@ export default function AdminPage() {
                     >
                         Sistem Ayarları
                     </button>
+                    <button
+                        onClick={() => setActiveTab("settlement")}
+                        className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === "settlement" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                    >
+                        Hesapla
+                    </button>
                 </div>
 
                 {activeTab === "users" ? (
@@ -509,8 +517,9 @@ export default function AdminPage() {
                         </div>
                     </div>
 
+                ) : activeTab === "settlement" ? (
+                    <SettlementTab />
                 ) : (
-
                     // SETTINGS TAB CONTENT
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl">
                         <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl shadow-blue-900/5 space-y-8">

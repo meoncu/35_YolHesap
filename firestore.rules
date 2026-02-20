@@ -14,15 +14,16 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Publicly readable for the anonymous home page
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Business data - Restricted to approved users
+    // Business data
     match /trips/{document=**} {
-      allow read, write: if isApproved();
+      allow read: if true; // Publicly readable for the home page calendar
+      allow write: if isApproved();
     }
     match /routes/{document=**} {
       allow read, write: if isApproved();
@@ -39,8 +40,8 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isApproved();
     }
-    match /appSettings/{document=**} {
-      allow read: if isSignedIn();
+    match /settings/{document=**} {
+      allow read: if true; // Publicly readable for fee calculations
       allow write: if isAdmin();
     }
   }
