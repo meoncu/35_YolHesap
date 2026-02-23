@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   getApprovedUsers,
   getAllTrips,
@@ -72,7 +73,8 @@ const getPersonColor = (uid: string) => {
 };
 
 export default function Home() {
-  const { profile, user, signInWithGoogle } = useAuth();
+  const { profile, user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [members, setMembers] = useState<UserProfile[]>([]);
@@ -105,6 +107,19 @@ export default function Home() {
       toast.success("Uygulama yükleniyor...");
     }
   };
+
+  // Secret admin access (5 fast taps)
+  const [secretClicks, setSecretClicks] = useState(0);
+
+  useEffect(() => {
+    if (secretClicks > 0 && secretClicks < 5) {
+      const timer = setTimeout(() => setSecretClicks(0), 1000);
+      return () => clearTimeout(timer);
+    } else if (secretClicks >= 5) {
+      setSecretClicks(0);
+      router.push("/admin");
+    }
+  }, [secretClicks, router]);
 
   // Data fetching
   const fetchData = async () => {
@@ -286,7 +301,7 @@ export default function Home() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-6 px-2 pb-24 max-w-md mx-auto min-h-screen">
+      <div className="flex flex-col gap-6 px-2 pb-8 max-w-md mx-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between pt-2">
@@ -310,7 +325,7 @@ export default function Home() {
                 <Smartphone size={16} />
               </Button>
             )}
-            {user ? (
+            {user && (
               <div className="flex gap-1">
                 {isAdmin && (
                   <Link href="/admin">
@@ -325,10 +340,6 @@ export default function Home() {
                   </Button>
                 )}
               </div>
-            ) : (
-              <Button onClick={signInWithGoogle} variant="ghost" className="h-8 px-3 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase">
-                <Shield size={12} className="mr-1" /> GİRİŞ
-              </Button>
             )}
           </div>
         </div>
@@ -464,8 +475,11 @@ export default function Home() {
 
         {/* Footer Info */}
         <div className="flex flex-col gap-1 items-center opacity-40 mt-4">
-          <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest">
-            YOLTAKİP v2.2.0
+          <p
+            onClick={() => setSecretClicks(p => p + 1)}
+            className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest cursor-pointer select-none pb-2 pt-2 active:scale-95 transition-transform"
+          >
+            YOLTAKİP v2.3.0
           </p>
           {!isAdmin && (
             <p className="text-[8px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em]">

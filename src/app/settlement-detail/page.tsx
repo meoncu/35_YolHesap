@@ -140,7 +140,7 @@ export default function SettlementDetailPage() {
 
     return (
         <AppLayout>
-            <div className="space-y-6 pb-24 max-w-4xl mx-auto">
+            <div className="space-y-6 pb-8 max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">

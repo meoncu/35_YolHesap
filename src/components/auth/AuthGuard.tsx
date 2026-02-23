@@ -11,8 +11,8 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
 
     useEffect(() => {
         if (!loading && !profileLoading) {
-            if (!user && pathname !== "/login" && pathname !== "/") {
-                router.push("/login");
+            if (!user && pathname !== "/admin" && pathname !== "/") {
+                router.push("/");
             } else if (user && pathname !== "/pending-approval") {
                 // If user exists, wait for profile to check approval
                 if (profile && profile.isApproved === false && pathname !== "/pending-approval") {
@@ -26,10 +26,10 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
 
     if (loading || (user && profileLoading)) return null;
 
-    // Allow login page access
-    if (pathname === "/login") return <>{children}</>;
+    // Allow admin page access
+    if (pathname === "/admin") return <>{children}</>;
 
-    // If not logged in and not on login page or home page, wait for redirect
+    // If not logged in and not on admin page or home page, wait for redirect
     if (!user && pathname !== "/") return null;
 
     // If logged in but not approved, only allow /pending-approval
