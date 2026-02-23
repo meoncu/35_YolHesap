@@ -65,8 +65,7 @@ const defaultCenter = {
 };
 
 export default function AdminPage() {
-    const { user: currentUser, profile, profileLoading, logout, signInWithGoogle } = useAuth();
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const { user: currentUser, logout } = useAuth();
     const [activeTab, setActiveTab] = useState<"users" | "routes" | "logs" | "settings" | "settlement">("users");
 
 
@@ -287,113 +286,9 @@ export default function AdminPage() {
         u.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleLogin = async () => {
-        setIsLoggingIn(true);
-        try {
-            await signInWithGoogle();
-            toast.success("Giriş başarılı! Yönetici paneline yönlendiriliyorsunuz...");
-        } catch (error: any) {
-            if (error?.code !== 'auth/popup-closed-by-user') {
-                toast.error("Giriş başarısız oldu. Lütfen tekrar deneyin.");
-            }
-            setIsLoggingIn(false);
-        }
-    };
-
-    if (!currentUser) {
-        return (
-            <div className="flex min-h-[80vh] items-center justify-center bg-background px-4">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="w-full max-w-md"
-                >
-                    <div className="mb-8 text-center">
-                        <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
-                            <Shield size={40} />
-                        </div>
-                        <h1 className="text-4xl font-black tracking-tight text-foreground mb-2 flex flex-col gap-1 items-center">
-                            <span className="italic uppercase transform -skew-x-6 text-2xl text-muted-foreground">SİSTEM</span>
-                            <span className="italic uppercase transform -skew-x-6">YÖNETİCİ <span className="text-primary">GİRİŞİ</span></span>
-                        </h1>
-                        <p className="text-muted-foreground font-medium mt-4">Yetkili işlemleri için Google hesabınızla giriş yapın.</p>
-                    </div>
-
-                    <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl shadow-blue-900/5 space-y-6">
-                        <Button
-                            onClick={handleLogin}
-                            disabled={isLoggingIn}
-                            className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 flex items-center justify-center gap-3 transition-all"
-                        >
-                            {isLoggingIn ? (
-                                <Loader2 className="w-6 h-6 animate-spin" />
-                            ) : (
-                                <svg className="w-6 h-6" viewBox="0 0 24 24">
-                                    <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
-                                </svg>
-                            )}
-                            GOOGLE İLE GİRİŞ YAP
-                        </Button>
-
-                        <div className="text-center pt-2">
-                            <Link href="/">
-                                <Button variant="ghost" className="text-muted-foreground hover:text-foreground text-xs font-bold uppercase tracking-widest rounded-xl h-10 px-6">
-                                    <ArrowLeft size={14} className="mr-2" /> Ana Sayfaya Dön
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </motion.div>
-            </div>
-        );
-    }
-
-    if (profileLoading) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-background">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    if (profile?.role !== "admin") {
-        return (
-            <div className="flex min-h-[80vh] items-center justify-center bg-background px-4">
-                <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl shadow-red-900/5 text-center space-y-6 w-full max-w-md">
-                    <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-3xl flex items-center justify-center text-red-500 mx-auto">
-                        <AlertCircle size={40} strokeWidth={2.5} />
-                    </div>
-                    <div className="space-y-2">
-                        <h2 className="text-2xl font-black text-foreground italic tracking-tighter uppercase">ERİŞİM REDDEDİLDİ</h2>
-                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                            Yönetici paneline erişim yetkiniz bulunmamaktadır. Yalnızca site yöneticileri bu sayfayı görüntüleyebilir.
-                        </p>
-                    </div>
-                    <div className="pt-4 flex flex-col gap-2">
-                        <Button
-                            onClick={async () => {
-                                await logout();
-                                window.location.href = "/";
-                            }}
-                            className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl uppercase tracking-widest text-xs transition-all"
-                        >
-                            ÇIKIŞ YAP
-                        </Button>
-                        <Link href="/">
-                            <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground text-xs font-bold uppercase tracking-widest rounded-xl h-10">
-                                <ArrowLeft size={14} className="mr-2" /> Ana Sayfaya Dön
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <AppLayout>
-            <div className="space-y-6 pb-8">
+            <div className="space-y-6 pb-24">
                 <div className="flex items-center gap-4">
                     <Link href="/">
                         <Button variant="ghost" size="icon" className="rounded-full">
