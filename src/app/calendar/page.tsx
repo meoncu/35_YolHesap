@@ -25,7 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Car, Users, Calendar as CalendarIcon, Info, Save, Loader2, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, addDays } from "date-fns";
 import { tr } from "date-fns/locale";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -151,6 +151,42 @@ export default function CalendarPage() {
         } catch (error) {
             console.error("Error saving trip:", error);
             toast.error("Kaydetme sırasında bir hata oluştu.");
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
+    const handleSaveWeeklyTrip = async () => {
+        if (!date || !driver) {
+            toast.error("Lütfen bir şoför seçin.");
+            return;
+        }
+
+        setSaveLoading(true);
+        try {
+            const monday = startOfWeek(date, { weekStartsOn: 1 });
+            const workDays = [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+
+            for (const day of workDays) {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const tripData: Trip = {
+                    date: dateStr,
+                    groupId: "main-group",
+                    driverUid: driver,
+                    participants: participants,
+                    totalCollected: participants.length * dailyFee,
+                    type: tripType
+                };
+                await saveTrip(tripData);
+            }
+
+            const updatedTrips = await getAllTrips();
+            setAllTrips(updatedTrips);
+            toast.success("Haftalık yolculuk kaydedildi (Pazartesi - Cuma).");
+            setIsDialogOpen(false);
+        } catch (error) {
+            console.error("Error saving weekly trip:", error);
+            toast.error("Haftalık kaydetme sırasında hata oluştu.");
         } finally {
             setSaveLoading(false);
         }
@@ -466,15 +502,23 @@ export default function CalendarPage() {
                             </div>
                         </div>
 
-                        <DialogFooter>
+                        <DialogFooter className="flex flex-col sm:flex-row gap-2">
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>İptal</Button>
+                            <Button
+                                className="bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center gap-2"
+                                onClick={handleSaveWeeklyTrip}
+                                disabled={saveLoading}
+                            >
+                                {saveLoading ? <Loader2 size={18} className="animate-spin" /> : <CalendarIcon size={18} />}
+                                Tüm Haftaya Uygula (Pzt-Cum)
+                            </Button>
                             <Button
                                 className="gradient-primary flex items-center gap-2"
                                 onClick={handleSaveTrip}
                                 disabled={saveLoading}
                             >
                                 {saveLoading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                                Kaydet
+                                Günü Kaydet
                             </Button>
                         </DialogFooter>
                     </DialogContent>

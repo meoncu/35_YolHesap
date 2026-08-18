@@ -44,7 +44,8 @@ import {
   subMonths,
   isToday,
   startOfWeek,
-  endOfWeek
+  endOfWeek,
+  addDays
 } from "date-fns";
 import { tr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -274,6 +275,83 @@ export default function Home() {
     }
   };
 
+  const handleBulkWeeklyUpdate = async () => {
+    if (!activeDay || !isAdmin) return;
+    const activeDateStr = format(activeDay, "yyyy-MM-dd");
+    const existingTrip = allTrips.find(t => t.date === activeDateStr);
+    const driverUid = existingTrip?.driverUid || "";
+
+    if (!driverUid) {
+      toast.error("Lütfen önce bu gün için bir şoför seçin.");
+      return;
+    }
+
+    const participants = existingTrip?.participants || members.map(m => m.uid);
+
+    setIsUpdating(true);
+    try {
+      const monday = startOfWeek(activeDay, { weekStartsOn: 1 });
+      const workDays = [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+      const newTrips: Trip[] = [];
+
+      for (const day of workDays) {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const newTrip: Trip = {
+          date: dateStr,
+          groupId: "main-group",
+          driverUid: driverUid,
+          participants: participants,
+          totalCollected: 0,
+          type: 'full'
+        };
+        await saveTrip(newTrip);
+        newTrips.push(newTrip);
+      }
+
+      setAllTrips(prev => {
+        const next = [...prev];
+        for (const trip of newTrips) {
+          const idx = next.findIndex(t => t.date === trip.date);
+          if (idx > -1) {
+            next[idx] = trip;
+          } else {
+            next.push(trip);
+          }
+        }
+        return next;
+      });
+
+      toast.success("Seçilen şoför ve yolcular tüm haftaya (Pzt-Cum) uygulandı.");
+    } catch (error) {
+      console.error("Error applying bulk weekly trip:", error);
+      toast.error("Haftalık atama sırasında hata oluştu.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleBulkWeeklyClear = async () => {
+    if (!activeDay || !isAdmin) return;
+    setIsUpdating(true);
+    try {
+      const monday = startOfWeek(activeDay, { weekStartsOn: 1 });
+      const workDays = [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+      const workDateStrs = workDays.map(d => format(d, "yyyy-MM-dd"));
+
+      for (const dateStr of workDateStrs) {
+        await deleteTrip(dateStr);
+      }
+
+      setAllTrips(prev => prev.filter(t => !workDateStrs.includes(t.date)));
+      toast.success("Tüm haftanın (Pzt-Cum) atamaları temizlendi.");
+    } catch (error) {
+      console.error("Error clearing week:", error);
+      toast.error("Haftalık temizleme sırasında hata oluştu.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
 
 
   const nextMonth = () => setSelectedDate(addMonths(selectedDate, 1));
@@ -465,7 +543,7 @@ export default function Home() {
         {/* Footer Info */}
         <div className="flex flex-col gap-1 items-center opacity-40 mt-4">
           <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest">
-            YOLTAKİP v2.2.0
+            YOLTAKİP v2.5.0
           </p>
           {!isAdmin && (
             <p className="text-[8px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em]">
@@ -562,7 +640,32 @@ export default function Home() {
                 </div>
               </div>
 
-              <Button onClick={() => setIsDriverDialogOpen(false)} className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-primary-foreground shadow-lg shadow-primary/20 uppercase tracking-widest">KAPAT</Button>
+              {/* Haftalık Toplu Atama Butonları */}
+              <div className="space-y-2 pt-2 border-t border-border">
+                <Button
+                  onClick={handleBulkWeeklyUpdate}
+                  className="w-full h-12 rounded-2xl bg-amber-500 hover:bg-amber-600 font-black text-white shadow-lg shadow-amber-500/20 uppercase tracking-wider text-xs flex items-center justify-center gap-2"
+                >
+                  <CalendarIcon size={16} />
+                  TÜM HAFTAYA UYGULA (PZT - CUM)
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleBulkWeeklyClear}
+                    variant="outline"
+                    className="w-1/2 h-10 rounded-xl text-rose-500 border-rose-500/30 hover:bg-rose-500/10 font-bold text-[10px] uppercase tracking-wider"
+                  >
+                    HAFTAYI TEMİZLE
+                  </Button>
+                  <Button
+                    onClick={() => setIsDriverDialogOpen(false)}
+                    variant="secondary"
+                    className="w-1/2 h-10 rounded-xl font-bold text-[10px] uppercase tracking-wider"
+                  >
+                    KAPAT
+                  </Button>
+                </div>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
