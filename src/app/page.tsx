@@ -18,9 +18,11 @@ import {
   UserPlus,
   Check,
   Users,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Flag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getHoliday, getHolidaysForMonth } from "@/lib/holidays";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -83,8 +85,6 @@ export default function Home() {
   const [activeDay, setActiveDay] = useState<Date | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-
-
   // PWA Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -121,9 +121,6 @@ export default function Home() {
       setSettings(appSettings);
     } catch (error) {
       console.error("Error fetching data:", error);
-      // Don't toast if it's just a permission error for non-logged in users?
-      // Firebase rules might block getAllTrips if not logged in.
-      // Let's assume trips should be public for viewing.
     } finally {
       setLoading(false);
     }
@@ -147,6 +144,10 @@ export default function Home() {
     const monthStr = format(selectedDate, "yyyy-MM");
     return allTrips.filter(t => t.date.startsWith(monthStr));
   }, [allTrips, selectedDate]);
+
+  const monthHolidays = useMemo(() => {
+    return getHolidaysForMonth(selectedDate.getFullYear(), selectedDate.getMonth());
+  }, [selectedDate]);
 
   // Debt calculation logic (mini version)
   const stats = useMemo(() => {
@@ -194,12 +195,22 @@ export default function Home() {
   }, [members, monthTrips, settings.dailyFee]);
 
   const handleCellClick = (day: Date) => {
-    if (!isAdmin) return;
+    const holiday = getHoliday(day);
+    if (!isAdmin) {
+      if (holiday) {
+        toast.info(`${holiday.name}${holiday.isHalfDay ? " (Yarım Gün)" : " (Resmi Tatil)"}`);
+      }
+      return;
+    }
 
     // Disable weekends (0 = Sunday, 6 = Saturday)
     const dayOfWeek = day.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
-      toast.info("Hafta sonları yolculuk planı yapılmamaktadır.");
+      if (holiday) {
+        toast.info(`${holiday.name} - Hafta sonları yolculuk planı yapılmamaktadır.`);
+      } else {
+        toast.info("Hafta sonları yolculuk planı yapılmamaktadır.");
+      }
       return;
     }
 
@@ -265,8 +276,6 @@ export default function Home() {
           return [...prev, newTrip];
         }
       });
-      // Keep dialog open if we want to toggle more participants?
-      // The user said "detayda arka tarafa tüm araba yla giden kişile listesi olacak"
     } catch (error) {
       console.error("Error updating trip:", error);
       toast.error("Hata oluştu");
@@ -291,7 +300,13 @@ export default function Home() {
     setIsUpdating(true);
     try {
       const monday = startOfWeek(activeDay, { weekStartsOn: 1 });
-      const workDays = [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+      const allWeekDays = [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+      const workDays = allWeekDays.filter(d => {
+        if (isSameDay(d, activeDay)) return true;
+        const h = getHoliday(d);
+        return !h || h.isHalfDay;
+      });
+      const skippedHolidaysCount = allWeekDays.length - workDays.length;
       const newTrips: Trip[] = [];
 
       for (const day of workDays) {
@@ -321,7 +336,11 @@ export default function Home() {
         return next;
       });
 
-      toast.success("Seçilen şoför ve yolcular tüm haftaya (Pzt-Cum) uygulandı.");
+      if (skippedHolidaysCount > 0) {
+        toast.success(`Haftalık atama yapıldı (${skippedHolidaysCount} resmi tatil günü atlandı).`);
+      } else {
+        toast.success("Seçilen şoför ve yolcular tüm haftaya (Pzt-Cum) uygulandı.");
+      }
     } catch (error) {
       console.error("Error applying bulk weekly trip:", error);
       toast.error("Haftalık atama sırasında hata oluştu.");
@@ -352,8 +371,6 @@ export default function Home() {
     }
   };
 
-
-
   const nextMonth = () => setSelectedDate(addMonths(selectedDate, 1));
   const prevMonth = () => setSelectedDate(subMonths(selectedDate, 1));
 
@@ -361,6 +378,11 @@ export default function Home() {
     if (!activeDay) return null;
     return allTrips.find(t => t.date === format(activeDay, "yyyy-MM-dd"));
   }, [activeDay, allTrips]);
+
+  const activeDayHoliday = useMemo(() => {
+    if (!activeDay) return null;
+    return getHoliday(activeDay);
+  }, [activeDay]);
 
   return (
     <AppLayout>
@@ -436,6 +458,9 @@ export default function Home() {
             const isCurrentMonth = day.getMonth() === selectedDate.getMonth();
             const isTodayDay = isToday(day);
             const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+            const holiday = getHoliday(day);
+            const isFullHoliday = Boolean(holiday && !holiday.isHalfDay);
+            const isHalfHoliday = Boolean(holiday && holiday.isHalfDay);
             const participantsNames = trip?.participants
               ? members.filter(m => trip.participants.includes(m.uid)).map(m => m.name).join(", ")
               : "";
@@ -449,42 +474,129 @@ export default function Home() {
                   "relative aspect-square rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all group",
                   !isCurrentMonth ? "opacity-20 bg-muted/20 border-transparent" : "bg-card border-border shadow-sm",
                   isWeekend && "bg-muted/30 border-dashed opacity-40 cursor-not-allowed",
+                  !driver && isFullHoliday && isCurrentMonth && "bg-rose-500/15 border-rose-500/40 opacity-100",
+                  !driver && isHalfHoliday && isCurrentMonth && "bg-amber-500/15 border-amber-500/40 opacity-100",
                   isTodayDay && "ring-2 ring-primary ring-offset-2 ring-offset-background z-10",
                   driver && getPersonColor(driver.uid) + " border-transparent"
                 )}
               >
+                {/* Holiday corner badge */}
+                {holiday && (
+                  <div
+                    className={cn(
+                      "absolute top-1 right-1 w-1.5 h-1.5 rounded-full",
+                      driver
+                        ? "bg-white ring-1 ring-rose-500"
+                        : holiday.isHalfDay
+                          ? "bg-amber-500"
+                          : "bg-rose-500"
+                    )}
+                  />
+                )}
+
                 {/* Tooltip */}
-                {participantsNames && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/80 backdrop-blur-md text-white text-[9px] font-bold rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[7px] text-white/50 uppercase tracking-widest mb-1">YOLCU LİSTESİ</span>
-                      {participantsNames.split(", ").map((name, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5">
-                          <div className="w-1 h-1 rounded-full bg-primary" />
-                          <span>{name}</span>
+                {(participantsNames || holiday) && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/85 backdrop-blur-md text-white text-[9px] font-bold rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
+                    <div className="flex flex-col gap-1">
+                      {holiday && (
+                        <div className="flex flex-col pb-1 border-b border-white/10 last:border-none last:pb-0">
+                          <span className={cn(
+                            "text-[7px] uppercase tracking-widest",
+                            holiday.isHalfDay ? "text-amber-400" : "text-rose-400"
+                          )}>
+                            {holiday.isHalfDay ? "YARIM GÜN TATİL" : "RESMİ TATİL"}
+                          </span>
+                          <span className="text-[9px] font-black text-white">{holiday.name}</span>
                         </div>
-                      ))}
+                      )}
+                      {participantsNames && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[7px] text-white/50 uppercase tracking-widest mb-0.5">YOLCU LİSTESİ</span>
+                          {participantsNames.split(", ").map((name, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5">
+                              <div className="w-1 h-1 rounded-full bg-primary" />
+                              <span>{name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {/* Arrow */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-black/80" />
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-black/85" />
                   </div>
                 )}
 
                 <span className={cn(
-                  "text-xs font-black",
-                  driver ? "text-white" : "text-foreground"
+                  "text-xs font-black leading-none",
+                  driver
+                    ? "text-white"
+                    : isFullHoliday
+                      ? "text-rose-600 dark:text-rose-400"
+                      : isHalfHoliday
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-foreground"
                 )}>
                   {format(day, "d")}
                 </span>
-                {driver && (
+                {driver ? (
                   <span className="text-[7px] font-black text-white/90 uppercase truncate w-[90%] text-center leading-none mt-0.5">
                     {driver.name.split(' ')[0]}
                   </span>
-                )}
+                ) : holiday ? (
+                  <span className={cn(
+                    "text-[6px] font-black uppercase truncate w-[92%] text-center leading-none mt-0.5",
+                    holiday.isHalfDay ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
+                  )}>
+                    {holiday.shortName}
+                  </span>
+                ) : null}
               </motion.div>
             );
           })}
         </div>
+
+        {/* Monthly Holidays Legend / List */}
+        {monthHolidays.length > 0 && (
+          <div className="bg-card/80 border border-border rounded-2xl p-3 space-y-2 shadow-sm">
+            <div className="flex items-center gap-1.5 px-1">
+              <Flag size={12} className="text-rose-500" />
+              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                BU AYDAKİ RESMİ TATİLLER & BAYRAMLAR
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {monthHolidays.map((h) => {
+                const hDate = parseISO(h.date);
+                return (
+                  <div
+                    key={h.date}
+                    onClick={() => handleCellClick(hDate)}
+                    className={cn(
+                      "flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[10px] transition-colors cursor-pointer",
+                      h.isHalfDay
+                        ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
+                        : "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-400"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-black whitespace-nowrap">
+                        {format(hDate, "d MMM EEE", { locale: tr })}
+                      </span>
+                      <span className="opacity-40">•</span>
+                      <span className="font-bold truncate">{h.name}</span>
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ml-2 whitespace-nowrap",
+                      h.isHalfDay ? "bg-amber-500/20" : "bg-rose-500/20"
+                    )}>
+                      {h.isHalfDay ? "Yarım Gün" : "Resmi Tatil"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Mini Debt List */}
         <div className="space-y-3 mt-2">
@@ -561,6 +673,14 @@ export default function Home() {
                   <CalendarIcon size={20} />
                   {activeDay && format(activeDay, "d MMMM", { locale: tr })}
                 </DialogTitle>
+                {activeDayHoliday && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 bg-white/15 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider w-fit">
+                    <Flag size={11} />
+                    <span>
+                      {activeDayHoliday.name} ({activeDayHoliday.isHalfDay ? "Yarım Gün" : "Resmi Tatil"})
+                    </span>
+                  </div>
+                )}
               </DialogHeader>
             </div>
             <div className="p-6 space-y-6">

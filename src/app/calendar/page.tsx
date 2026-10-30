@@ -22,7 +22,7 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Users, Calendar as CalendarIcon, Info, Save, Loader2, ArrowLeft } from "lucide-react";
+import { Car, Users, Calendar as CalendarIcon, Info, Save, Loader2, ArrowLeft, Flag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, addDays } from "date-fns";
@@ -33,6 +33,7 @@ import { Trip, UserProfile } from "@/types";
 import { getApprovedUsers, getAllTrips, saveTrip, getAppSettings } from "@/lib/db-service";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getHoliday } from "@/lib/holidays";
 import { SeatingPlan } from "@/components/dashboard/SeatingPlan";
 
 export default function CalendarPage() {
@@ -165,7 +166,13 @@ export default function CalendarPage() {
         setSaveLoading(true);
         try {
             const monday = startOfWeek(date, { weekStartsOn: 1 });
-            const workDays = [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+            const workDays = [0, 1, 2, 3, 4]
+                .map(i => addDays(monday, i))
+                .filter(d => {
+                    if (isSameDay(d, date)) return true;
+                    const h = getHoliday(d);
+                    return !h || h.isHalfDay;
+                });
 
             for (const day of workDays) {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -192,6 +199,8 @@ export default function CalendarPage() {
         }
     };
 
+    const selectedHoliday = date ? getHoliday(date) : null;
+
     return (
         <AppLayout>
             <div className="space-y-6">
@@ -217,7 +226,28 @@ export default function CalendarPage() {
                                 onSelect={setDate}
                                 className="scale-125 md:scale-150 origin-center"
                                 locale={tr}
+                                modifiers={{
+                                    holiday: (d) => {
+                                        const h = getHoliday(d);
+                                        return Boolean(h && !h.isHalfDay);
+                                    },
+                                    halfHoliday: (d) => Boolean(getHoliday(d)?.isHalfDay)
+                                }}
+                                modifiersClassNames={{
+                                    holiday: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black rounded-md ring-1 ring-rose-500/30",
+                                    halfHoliday: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold rounded-md ring-1 ring-amber-500/30"
+                                }}
                             />
+                            <div className="flex items-center gap-4 mt-16 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                                    <span>Resmi Tatil</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                                    <span>Arife / Yarım Gün</span>
+                                </div>
+                            </div>
                         </Card>
                     </div>
 
@@ -233,9 +263,20 @@ export default function CalendarPage() {
                             >
                                 <Card className="border-border shadow-md overflow-hidden bg-card flex-1 flex flex-col h-full min-h-[580px] rounded-[3rem]">
                                     <CardHeader className="bg-muted/50 border-b border-border flex flex-row items-center justify-between space-y-0 py-5 px-8 shrink-0">
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col gap-1">
                                             <span className="text-xs font-black text-primary uppercase tracking-tighter">İNCELENEN GÜN</span>
                                             <span className="text-lg font-bold text-foreground">{date ? format(date, "d MMMM yyyy, EEEE", { locale: tr }) : "Gün seçiniz"}</span>
+                                            {selectedHoliday && (
+                                                <div className={cn(
+                                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider w-fit mt-1 border",
+                                                    selectedHoliday.isHalfDay
+                                                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                                                        : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                                                )}>
+                                                    <Flag size={11} />
+                                                    <span>{selectedHoliday.name} ({selectedHoliday.isHalfDay ? "Yarım Gün" : "Resmi Tatil"})</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="p-3 bg-primary/10 rounded-2xl text-primary">
                                             <CalendarIcon size={24} strokeWidth={2.5} />
@@ -329,6 +370,7 @@ export default function CalendarPage() {
                                 const tripParticipants = members.filter(m => trip?.participants?.includes(m.uid));
                                 const isToday = isSameDay(day, new Date());
                                 const isSelected = isSameDay(day, date);
+                                const dayHoliday = getHoliday(day);
 
                                 return (
                                     <div
@@ -337,21 +379,36 @@ export default function CalendarPage() {
                                         className={cn(
                                             "flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-3xl transition-all border cursor-pointer",
                                             isSelected ? "bg-primary/10 border-primary shadow-md ring-1 ring-primary/20" :
-                                                isToday ? "bg-green-500/10 border-green-500/50" : "bg-muted/50 border-border hover:border-primary/30"
+                                                isToday ? "bg-green-500/10 border-green-500/50" :
+                                                    dayHoliday ? (dayHoliday.isHalfDay ? "bg-amber-500/5 border-amber-500/30" : "bg-rose-500/5 border-rose-500/30") :
+                                                        "bg-muted/50 border-border hover:border-primary/30"
                                         )}
                                     >
                                         {/* Date Part */}
-                                        <div className="flex items-center gap-3 min-w-[140px]">
+                                        <div className="flex items-center gap-3 min-w-[180px]">
                                             <div className={cn(
                                                 "w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black",
-                                                isSelected ? "bg-primary text-primary-foreground" : isToday ? "bg-green-500 text-white" : "bg-card text-muted-foreground shadow-sm"
+                                                isSelected ? "bg-primary text-primary-foreground" :
+                                                    isToday ? "bg-green-500 text-white" :
+                                                        dayHoliday ? (dayHoliday.isHalfDay ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" : "bg-rose-500/20 text-rose-600 dark:text-rose-400") :
+                                                            "bg-card text-muted-foreground shadow-sm"
                                             )}>
                                                 <span className="text-[10px] uppercase opacity-60 leading-none mb-0.5">{format(day, "EEE", { locale: tr })}</span>
                                                 <span className="text-base leading-none">{format(day, "d")}</span>
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">{format(day, "MMMM", { locale: tr })}</span>
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">{format(day, "MMMM", { locale: tr })}</span>
                                                 <span className="text-xs font-black text-foreground leading-none">{isToday ? "BUGÜN" : format(day, "EEEE", { locale: tr })}</span>
+                                                {dayHoliday && (
+                                                    <span className={cn(
+                                                        "text-[9px] font-black uppercase px-2 py-0.5 rounded-md w-fit",
+                                                        dayHoliday.isHalfDay
+                                                            ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                                                            : "bg-rose-500/15 text-rose-700 dark:text-rose-400"
+                                                    )}>
+                                                        {dayHoliday.name}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 
