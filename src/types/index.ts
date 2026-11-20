@@ -38,6 +38,7 @@ export interface Trip {
     distanceKm?: number;
     isInherited?: boolean;
     noTrip?: boolean; // true => o gün ortak araçla gidilmedi (ücret hesaplanmaz)
+    noTripReason?: string; // "Gidilmedi" açıklaması (ör. Şoför izinli)
 }
 
 export interface Route {

@@ -10,6 +10,7 @@ import {
     serverTimestamp,
     orderBy,
     deleteDoc,
+    deleteField,
     limit
 } from "firebase/firestore";
 
@@ -92,12 +93,14 @@ export const saveTrip = async (trip: Trip) => {
         ...trip,
         // merge kullanıldığı için, normal bir yolculuk kaydı önceki "gidilmedi" işaretini temizlemeli
         noTrip: trip.noTrip === true,
+        // Normal yolculuğa dönen günde eski "gidilmedi" açıklaması kalmasın
+        noTripReason: trip.noTrip === true ? (trip.noTripReason ?? "") : deleteField(),
         updatedAt: serverTimestamp()
     }, { merge: true });
 };
 
 /** Belirtilen günü "ortak araçla gidilmedi" olarak işaretler. */
-export const markNoTripDay = async (date: string, groupId: string = "main-group"): Promise<Trip> => {
+export const markNoTripDay = async (date: string, reason: string = "", groupId: string = "main-group"): Promise<Trip> => {
     const trip: Trip = {
         date,
         groupId,
@@ -105,12 +108,19 @@ export const markNoTripDay = async (date: string, groupId: string = "main-group"
         participants: [],
         totalCollected: 0,
         type: 'full',
-        noTrip: true
+        noTrip: true,
+        noTripReason: reason.trim()
     };
     const tripRef = doc(collection(db, "trips"), `${date}_${groupId}`);
     // merge yok: eski şoför/yolcu/mesafe bilgileri tamamen silinsin
     await setDoc(tripRef, { ...trip, updatedAt: serverTimestamp() });
     return trip;
+};
+
+/** "Gidilmedi" gününün açıklamasını günceller. */
+export const updateNoTripReason = async (date: string, reason: string, groupId: string = "main-group") => {
+    const tripRef = doc(collection(db, "trips"), `${date}_${groupId}`);
+    await updateDoc(tripRef, { noTripReason: reason.trim(), updatedAt: serverTimestamp() });
 };
 
 export const deleteTrip = async (date: string, groupId: string = "main-group") => {

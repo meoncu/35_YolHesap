@@ -423,7 +423,12 @@ export default function CalendarPage() {
                                             {isNoTripDay(trip) ? (
                                                 <div className="flex-1 flex items-center gap-3">
                                                     <div className="bg-slate-500/10 p-2 rounded-xl text-slate-500"><Car size={16} /></div>
-                                                    <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Ortak araçla gidilmedi</span>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Ortak araçla gidilmedi</span>
+                                                        {trip?.noTripReason && (
+                                                            <span className="text-xs font-bold text-muted-foreground">{trip.noTripReason}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ) : trip ? (
                                                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
