@@ -19,7 +19,8 @@ import {
   Check,
   Users,
   Calendar as CalendarIcon,
-  Flag
+  Flag,
+  Ban
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getHoliday, getHolidaysForMonth } from "@/lib/holidays";
@@ -32,7 +33,9 @@ import {
   deleteTrip,
   getAppSettings,
   AppSettings,
-  createManualUser
+  createManualUser,
+  markNoTripDay,
+  isNoTripDay
 } from "@/lib/db-service";
 import { UserProfile, Trip } from "@/types";
 import {
@@ -161,6 +164,9 @@ export default function Home() {
       let credit = 0;
 
       monthTrips.forEach(trip => {
+        // "Gidilmedi" olarak işaretlenen günler hesaba katılmaz
+        if (isNoTripDay(trip)) return;
+
         const isDriver = trip.driverUid === member.uid;
         const isParticipant = trip.participants?.includes(member.uid);
 
@@ -223,7 +229,9 @@ export default function Home() {
     setIsUpdating(true);
     try {
       const dateStr = format(activeDay, "yyyy-MM-dd");
-      const existingTrip = allTrips.find(t => t.date === dateStr);
+      const foundTrip = allTrips.find(t => t.date === dateStr);
+      // "Gidilmedi" günü yeniden düzenleniyorsa sıfırdan başla (varsayılan: herkes yolcu)
+      const existingTrip = isNoTripDay(foundTrip) ? undefined : foundTrip;
 
       if (type === 'driver' && uid === "") {
         await deleteTrip(dateStr);
@@ -233,7 +241,7 @@ export default function Home() {
       }
 
       let driverUid = existingTrip?.driverUid || "";
-      let participants = existingTrip?.participants || members.map(m => m.uid);
+      let participants = [...(existingTrip?.participants || members.map(m => m.uid))];
 
       if (type === 'driver') {
         driverUid = uid;
@@ -284,6 +292,22 @@ export default function Home() {
     }
   };
 
+  const handleMarkNoTrip = async () => {
+    if (!activeDay || !isAdmin) return;
+    setIsUpdating(true);
+    try {
+      const dateStr = format(activeDay, "yyyy-MM-dd");
+      const noTrip = await markNoTripDay(dateStr);
+      setAllTrips(prev => [...prev.filter(t => t.date !== dateStr), noTrip]);
+      toast.success("Bu gün \"ortak araçla gidilmedi\" olarak işaretlendi.");
+    } catch (error) {
+      console.error("Error marking no-trip day:", error);
+      toast.error("Hata oluştu");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleBulkWeeklyUpdate = async () => {
     if (!activeDay || !isAdmin) return;
     const activeDateStr = format(activeDay, "yyyy-MM-dd");
@@ -301,12 +325,23 @@ export default function Home() {
     try {
       const monday = startOfWeek(activeDay, { weekStartsOn: 1 });
       const allWeekDays = [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+      let skippedHolidaysCount = 0;
+      let skippedNoTripCount = 0;
       const workDays = allWeekDays.filter(d => {
         if (isSameDay(d, activeDay)) return true;
         const h = getHoliday(d);
-        return !h || h.isHalfDay;
+        if (h && !h.isHalfDay) {
+          skippedHolidaysCount++;
+          return false;
+        }
+        // "Gidilmedi" olarak işaretlenmiş günlerin üzerine yazma
+        const dayTrip = allTrips.find(t => t.date === format(d, "yyyy-MM-dd"));
+        if (isNoTripDay(dayTrip)) {
+          skippedNoTripCount++;
+          return false;
+        }
+        return true;
       });
-      const skippedHolidaysCount = allWeekDays.length - workDays.length;
       const newTrips: Trip[] = [];
 
       for (const day of workDays) {
@@ -336,8 +371,12 @@ export default function Home() {
         return next;
       });
 
-      if (skippedHolidaysCount > 0) {
-        toast.success(`Haftalık atama yapıldı (${skippedHolidaysCount} resmi tatil günü atlandı).`);
+      const skippedParts = [
+        skippedHolidaysCount > 0 ? `${skippedHolidaysCount} resmi tatil` : "",
+        skippedNoTripCount > 0 ? `${skippedNoTripCount} gidilmedi` : ""
+      ].filter(Boolean);
+      if (skippedParts.length > 0) {
+        toast.success(`Haftalık atama yapıldı (${skippedParts.join(", ")} günü atlandı).`);
       } else {
         toast.success("Seçilen şoför ve yolcular tüm haftaya (Pzt-Cum) uygulandı.");
       }
@@ -454,7 +493,8 @@ export default function Home() {
           {calendarDays.map((day, i) => {
             const dateStr = format(day, "yyyy-MM-dd");
             const trip = allTrips.find(t => t.date === dateStr);
-            const driver = trip ? members.find(m => m.uid === trip.driverUid) : null;
+            const isNoTrip = isNoTripDay(trip);
+            const driver = trip && !isNoTrip ? members.find(m => m.uid === trip.driverUid) : null;
             const isCurrentMonth = day.getMonth() === selectedDate.getMonth();
             const isTodayDay = isToday(day);
             const isWeekend = day.getDay() === 0 || day.getDay() === 6;
@@ -476,6 +516,7 @@ export default function Home() {
                   isWeekend && "bg-muted/30 border-dashed opacity-40 cursor-not-allowed",
                   !driver && isFullHoliday && isCurrentMonth && "bg-rose-500/15 border-rose-500/40 opacity-100",
                   !driver && isHalfHoliday && isCurrentMonth && "bg-amber-500/15 border-amber-500/40 opacity-100",
+                  isNoTrip && isCurrentMonth && "bg-slate-500/15 border-slate-500/40 border-dashed opacity-100",
                   isTodayDay && "ring-2 ring-primary ring-offset-2 ring-offset-background z-10",
                   driver && getPersonColor(driver.uid) + " border-transparent"
                 )}
@@ -495,7 +536,7 @@ export default function Home() {
                 )}
 
                 {/* Tooltip */}
-                {(participantsNames || holiday) && (
+                {(participantsNames || holiday || isNoTrip) && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/85 backdrop-blur-md text-white text-[9px] font-bold rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
                     <div className="flex flex-col gap-1">
                       {holiday && (
@@ -508,6 +549,9 @@ export default function Home() {
                           </span>
                           <span className="text-[9px] font-black text-white">{holiday.name}</span>
                         </div>
+                      )}
+                      {isNoTrip && (
+                        <span className="text-[9px] font-black text-white">ORTAK ARAÇLA GİDİLMEDİ</span>
                       )}
                       {participantsNames && (
                         <div className="flex flex-col gap-0.5">
@@ -530,7 +574,9 @@ export default function Home() {
                   "text-xs font-black leading-none",
                   driver
                     ? "text-white"
-                    : isFullHoliday
+                    : isNoTrip
+                      ? "text-slate-500 dark:text-slate-400"
+                      : isFullHoliday
                       ? "text-rose-600 dark:text-rose-400"
                       : isHalfHoliday
                         ? "text-amber-600 dark:text-amber-400"
@@ -541,6 +587,10 @@ export default function Home() {
                 {driver ? (
                   <span className="text-[7px] font-black text-white/90 uppercase truncate w-[90%] text-center leading-none mt-0.5">
                     {driver.name.split(' ')[0]}
+                  </span>
+                ) : isNoTrip ? (
+                  <span className="text-[6px] font-black uppercase truncate w-[92%] text-center leading-none mt-0.5 text-slate-500 dark:text-slate-400">
+                    GİDİLMEDİ
                   </span>
                 ) : holiday ? (
                   <span className={cn(
@@ -655,7 +705,7 @@ export default function Home() {
         {/* Footer Info */}
         <div className="flex flex-col gap-1 items-center opacity-40 mt-4">
           <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest">
-            YOLTAKİP v2.5.0
+            YOLTAKİP v2.6.0
           </p>
           {!isAdmin && (
             <p className="text-[8px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em]">
@@ -687,14 +737,18 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">ŞOFÖR SEÇİN</h3>
-                  {activeTripData && <span className="text-[9px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">AKTİF</span>}
+                  {activeTripData && (
+                    isNoTripDay(activeTripData)
+                      ? <span className="text-[9px] font-black text-slate-500 bg-slate-500/10 px-2 py-0.5 rounded uppercase">GİDİLMEDİ</span>
+                      : <span className="text-[9px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">AKTİF</span>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div
                     onClick={() => handleUpdateTripData("", 'driver')}
                     className={cn(
                       "flex flex-col items-center justify-center p-3 rounded-2xl border border-dashed transition-all cursor-pointer opacity-80 hover:opacity-100",
-                      (!activeTripData || activeTripData?.driverUid === "")
+                      (!activeTripData || (activeTripData?.driverUid === "" && !isNoTripDay(activeTripData)))
                         ? "bg-rose-500/10 border-rose-500/20 text-rose-500"
                         : "bg-muted/50 border-transparent"
                     )}
@@ -703,6 +757,23 @@ export default function Home() {
                       <Users size={16} />
                     </div>
                     <span className="text-[9px] font-black uppercase">TEMİZLE</span>
+                  </div>
+                  <div
+                    onClick={handleMarkNoTrip}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-3 rounded-2xl border border-dashed transition-all cursor-pointer",
+                      isNoTripDay(activeTripData)
+                        ? "bg-slate-600 text-white border-slate-600 shadow-lg ring-2 ring-slate-500/20"
+                        : "bg-muted/50 border-transparent opacity-80 hover:opacity-100"
+                    )}
+                  >
+                    <div className={cn(
+                      "h-10 w-10 flex items-center justify-center rounded-full mb-2",
+                      isNoTripDay(activeTripData) ? "bg-white/20" : "bg-muted"
+                    )}>
+                      <Ban size={16} />
+                    </div>
+                    <span className="text-[9px] font-black uppercase">GİDİLMEDİ</span>
                   </div>
                   {members.map(m => (
                     <div
@@ -725,6 +796,14 @@ export default function Home() {
                 </div>
               </div>
 
+              {isNoTripDay(activeTripData) ? (
+                <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-500/10 border border-slate-500/20 text-slate-600 dark:text-slate-300">
+                  <Ban size={18} className="shrink-0" />
+                  <p className="text-[11px] font-bold leading-snug">
+                    Bu gün ortak araçla gidilmedi. Kimseye ücret yansıtılmaz. Değiştirmek için bir şoför seçin.
+                  </p>
+                </div>
+              ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
@@ -759,6 +838,7 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Haftalık Toplu Atama Butonları */}
               <div className="space-y-2 pt-2 border-t border-border">
