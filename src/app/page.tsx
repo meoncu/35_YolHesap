@@ -35,6 +35,7 @@ import {
   AppSettings,
   createManualUser,
   markNoTripDay,
+  updateNoTripReason,
   isNoTripDay
 } from "@/lib/db-service";
 import { UserProfile, Trip } from "@/types";
@@ -87,6 +88,7 @@ export default function Home() {
   const [isDriverDialogOpen, setIsDriverDialogOpen] = useState(false);
   const [activeDay, setActiveDay] = useState<Date | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [noTripNote, setNoTripNote] = useState("");
 
   // PWA Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -202,12 +204,16 @@ export default function Home() {
 
   const handleCellClick = (day: Date) => {
     const holiday = getHoliday(day);
+    const dayTrip = allTrips.find(t => t.date === format(day, "yyyy-MM-dd"));
     if (!isAdmin) {
-      if (holiday) {
+      if (isNoTripDay(dayTrip)) {
+        toast.info(`Ortak araçla gidilmedi${dayTrip?.noTripReason ? `: ${dayTrip.noTripReason}` : ""}`);
+      } else if (holiday) {
         toast.info(`${holiday.name}${holiday.isHalfDay ? " (Yarım Gün)" : " (Resmi Tatil)"}`);
       }
       return;
     }
+    setNoTripNote(dayTrip?.noTripReason || "");
 
     // Disable weekends (0 = Sunday, 6 = Saturday)
     const dayOfWeek = day.getDay();
@@ -297,12 +303,32 @@ export default function Home() {
     setIsUpdating(true);
     try {
       const dateStr = format(activeDay, "yyyy-MM-dd");
-      const noTrip = await markNoTripDay(dateStr);
+      const existing = allTrips.find(t => t.date === dateStr);
+      const reason = isNoTripDay(existing) ? (existing?.noTripReason || noTripNote) : noTripNote;
+      const noTrip = await markNoTripDay(dateStr, reason);
+      setNoTripNote(noTrip.noTripReason || "");
       setAllTrips(prev => [...prev.filter(t => t.date !== dateStr), noTrip]);
       toast.success("Bu gün \"ortak araçla gidilmedi\" olarak işaretlendi.");
     } catch (error) {
       console.error("Error marking no-trip day:", error);
       toast.error("Hata oluştu");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveNoTripReason = async (reason: string) => {
+    if (!activeDay || !isAdmin) return;
+    const dateStr = format(activeDay, "yyyy-MM-dd");
+    setIsUpdating(true);
+    try {
+      await updateNoTripReason(dateStr, reason);
+      setNoTripNote(reason.trim());
+      setAllTrips(prev => prev.map(t => t.date === dateStr ? { ...t, noTripReason: reason.trim() } : t));
+      toast.success("Açıklama kaydedildi.");
+    } catch (error) {
+      console.error("Error saving no-trip reason:", error);
+      toast.error("Açıklama kaydedilemedi.");
     } finally {
       setIsUpdating(false);
     }
@@ -551,7 +577,12 @@ export default function Home() {
                         </div>
                       )}
                       {isNoTrip && (
-                        <span className="text-[9px] font-black text-white">ORTAK ARAÇLA GİDİLMEDİ</span>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-white">ORTAK ARAÇLA GİDİLMEDİ</span>
+                          {trip?.noTripReason && (
+                            <span className="text-[9px] font-bold text-white/70">{trip.noTripReason}</span>
+                          )}
+                        </div>
                       )}
                       {participantsNames && (
                         <div className="flex flex-col gap-0.5">
@@ -705,7 +736,7 @@ export default function Home() {
         {/* Footer Info */}
         <div className="flex flex-col gap-1 items-center opacity-40 mt-4">
           <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest">
-            YOLTAKİP v2.6.0
+            YOLTAKİP v2.7.0
           </p>
           {!isAdmin && (
             <p className="text-[8px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em]">
@@ -797,11 +828,52 @@ export default function Home() {
               </div>
 
               {isNoTripDay(activeTripData) ? (
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-500/10 border border-slate-500/20 text-slate-600 dark:text-slate-300">
-                  <Ban size={18} className="shrink-0" />
-                  <p className="text-[11px] font-bold leading-snug">
-                    Bu gün ortak araçla gidilmedi. Kimseye ücret yansıtılmaz. Değiştirmek için bir şoför seçin.
-                  </p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-500/10 border border-slate-500/20 text-slate-600 dark:text-slate-300">
+                    <Ban size={18} className="shrink-0" />
+                    <p className="text-[11px] font-bold leading-snug">
+                      Bu gün ortak araçla gidilmedi. Kimseye ücret yansıtılmaz. Değiştirmek için bir şoför seçin.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">AÇIKLAMA</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Şoför izinli", "Şoför hasta", "Araç arızalı", "Herkes izinli"].map(preset => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => handleSaveNoTripReason(preset)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors",
+                            activeTripData?.noTripReason === preset
+                              ? "bg-slate-600 text-white border-slate-600"
+                              : "bg-muted/50 border-border hover:bg-muted"
+                          )}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={noTripNote}
+                        onChange={(e) => setNoTripNote(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveNoTripReason(noTripNote);
+                        }}
+                        maxLength={100}
+                        placeholder="Açıklama yazın (ör. Şoför izinli)"
+                        className="h-10 rounded-xl text-xs"
+                      />
+                      <Button
+                        onClick={() => handleSaveNoTripReason(noTripNote)}
+                        disabled={noTripNote.trim() === (activeTripData?.noTripReason || "")}
+                        className="h-10 rounded-xl px-4 text-[10px] font-black uppercase"
+                      >
+                        KAYDET
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
               <div className="space-y-4">
