@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import {
     getApprovedUsers,
     getTripsByMonth,
+    filterActiveTrips,
     getAppSettings
 } from "@/lib/db-service";
 import { UserProfile, Trip } from "@/types";
@@ -47,7 +48,8 @@ export default function SettlementDetailPage() {
                     getAppSettings()
                 ]);
                 setUsers(fetchedUsers);
-                setTrips(fetchedTrips);
+                // "Gidilmedi" günleri hesaplamaya dahil edilmez
+                setTrips(filterActiveTrips(fetchedTrips));
                 setSettings(settings);
 
                 if (fetchedUsers.length > 0 && !activeUser) {

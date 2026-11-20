@@ -71,6 +71,14 @@ export const getUserByEmail = async (email: string): Promise<UserProfile | null>
 
 
 // Trip Services
+
+/** O gün ortak araçla gidilmediyse true döner. */
+export const isNoTripDay = (trip?: Pick<Trip, "noTrip"> | null): boolean => trip?.noTrip === true;
+
+/** Hesaplamaya girecek (gerçekten yapılmış) yolculukları döner. */
+export const filterActiveTrips = <T extends Pick<Trip, "noTrip">>(trips: T[]): T[] =>
+    trips.filter(t => !isNoTripDay(t));
+
 export const saveTrip = async (trip: Trip) => {
     // Ensure fuel prices for this date are fetched and stored
     try {
@@ -82,8 +90,27 @@ export const saveTrip = async (trip: Trip) => {
     const tripRef = doc(collection(db, "trips"), `${trip.date}_${trip.groupId}`);
     await setDoc(tripRef, {
         ...trip,
+        // merge kullanıldığı için, normal bir yolculuk kaydı önceki "gidilmedi" işaretini temizlemeli
+        noTrip: trip.noTrip === true,
         updatedAt: serverTimestamp()
     }, { merge: true });
+};
+
+/** Belirtilen günü "ortak araçla gidilmedi" olarak işaretler. */
+export const markNoTripDay = async (date: string, groupId: string = "main-group"): Promise<Trip> => {
+    const trip: Trip = {
+        date,
+        groupId,
+        driverUid: "",
+        participants: [],
+        totalCollected: 0,
+        type: 'full',
+        noTrip: true
+    };
+    const tripRef = doc(collection(db, "trips"), `${date}_${groupId}`);
+    // merge yok: eski şoför/yolcu/mesafe bilgileri tamamen silinsin
+    await setDoc(tripRef, { ...trip, updatedAt: serverTimestamp() });
+    return trip;
 };
 
 export const deleteTrip = async (date: string, groupId: string = "main-group") => {

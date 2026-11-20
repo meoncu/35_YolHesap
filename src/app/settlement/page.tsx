@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getUsers, getAllTrips, getAppSettings, getApprovedUsers } from "@/lib/db-service";
+import { getUsers, getAllTrips, getAppSettings, getApprovedUsers, filterActiveTrips } from "@/lib/db-service";
 import { UserProfile, Trip } from "@/types";
 import { ArrowLeft, Save, Calculator, Trash2, Plus, Receipt, RefreshCcw, Calendar, Check, AlertCircle, Loader2 as LoaderIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -111,7 +111,8 @@ export default function SettlementPage() {
         if (activeTab === 'auto') {
             const fetchAutoTrips = async () => {
                 const trips = await getAllTrips();
-                const filtered = trips.filter(t => t.date.startsWith(selectedMonth));
+                // "Gidilmedi" günleri hesaplamaya dahil edilmez
+                const filtered = filterActiveTrips(trips).filter(t => t.date.startsWith(selectedMonth));
                 setAutoTrips(filtered);
             };
             fetchAutoTrips();

@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getAllTrips, getApprovedUsers, getDrivingTracks } from "@/lib/db-service";
+import { getAllTrips, getApprovedUsers, getDrivingTracks, filterActiveTrips } from "@/lib/db-service";
 import { getFuelPrices, getMonthFuelHistory, FuelPriceData } from "@/lib/fuel-service";
 import { Trip, UserProfile, DrivingTrack } from "@/types";
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, subMonths } from "date-fns";
@@ -76,7 +76,8 @@ function ReportsContent() {
                     getMonthFuelHistory(monthStr),
                     user ? getDrivingTracks(user.uid, monthStr) : Promise.resolve([])
                 ]);
-                setTrips(allTrips);
+                // "Gidilmedi" günlerinde yakıt/mesafe hesabı yapılmaz
+                setTrips(filterActiveTrips(allTrips));
                 setUsers(allUsers);
                 setFuelPrices(prices);
                 setFuelHistory(history);

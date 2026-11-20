@@ -30,7 +30,7 @@ import { tr } from "date-fns/locale";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { Trip, UserProfile } from "@/types";
-import { getApprovedUsers, getAllTrips, saveTrip, getAppSettings } from "@/lib/db-service";
+import { getApprovedUsers, getAllTrips, saveTrip, getAppSettings, isNoTripDay } from "@/lib/db-service";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getHoliday } from "@/lib/holidays";
@@ -82,7 +82,13 @@ export default function CalendarPage() {
                 const tripRef = doc(db, "trips", `${dateStr}_main-group`); // Assuming 'main-group' as default
                 const tripDoc = await getDoc(tripRef);
 
-                if (tripDoc.exists()) {
+                if (tripDoc.exists() && isNoTripDay(tripDoc.data() as Trip)) {
+                    // "Gidilmedi" günü: kayıtlı yolculuk yok, şoför seçilirse üzerine yazılır
+                    setCurrentTrip(null);
+                    setDriver("");
+                    setParticipants([]);
+                    setTripType('full');
+                } else if (tripDoc.exists()) {
                     const data = tripDoc.data() as Trip;
                     setCurrentTrip(data);
                     setDriver(data.driverUid || "");
@@ -91,7 +97,7 @@ export default function CalendarPage() {
                 } else {
                     // Inherit from the most recent past trip
                     const pastTrips = [...allTrips]
-                        .filter(t => t.date < dateStr)
+                        .filter(t => t.date < dateStr && !isNoTripDay(t))
                         .sort((a, b) => b.date.localeCompare(a.date));
 
                     if (pastTrips.length > 0) {
@@ -414,7 +420,12 @@ export default function CalendarPage() {
 
                                         {/* Trip Data Part */}
                                         <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4">
-                                            {trip ? (
+                                            {isNoTripDay(trip) ? (
+                                                <div className="flex-1 flex items-center gap-3">
+                                                    <div className="bg-slate-500/10 p-2 rounded-xl text-slate-500"><Car size={16} /></div>
+                                                    <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Ortak araçla gidilmedi</span>
+                                                </div>
+                                            ) : trip ? (
                                                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     {/* Driver & Participants */}
                                                     <div className="flex items-center gap-3">
@@ -438,7 +449,7 @@ export default function CalendarPage() {
                                             ) : (
                                                 (() => {
                                                     const inheritedTrip = allTrips
-                                                        .filter(t => t.date < dayStr)
+                                                        .filter(t => t.date < dayStr && !isNoTripDay(t))
                                                         .sort((a, b) => b.date.localeCompare(a.date))[0];
 
                                                     if (inheritedTrip) {
