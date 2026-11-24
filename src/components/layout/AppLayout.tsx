@@ -4,7 +4,6 @@ import React from "react";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { GpsTracker } from "@/components/dashboard/GpsTracker";
 import { usePathname } from "next/navigation";
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -25,7 +24,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
     return (
         <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-300">
-            <GpsTracker />
+            {/* Sabah/akşam otomatik GPS yol takibi devre dışı bırakıldı. */}
             {/* <Header /> Removed for dashboard layout optimization */}
             <main className="flex-1 pb-20 md:pb-0 pt-4">
                 <AuthGuard>

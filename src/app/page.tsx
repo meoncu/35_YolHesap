@@ -736,7 +736,7 @@ export default function Home() {
         {/* Footer Info */}
         <div className="flex flex-col gap-1 items-center opacity-40 mt-4">
           <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-widest">
-            YOLTAKİP v2.7.0
+            YOLTAKİP v2.7.1
           </p>
           {!isAdmin && (
             <p className="text-[8px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em]">
